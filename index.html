@@ -300,7 +300,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
   </form>
 </div>
 
-<script src="cards/registry.js?v=b6dd139f"></script>
+<script src="cards/registry.js?rev=b6dd139f"></script>
 <script>
 /* Réglages de la page : decks montrés, origine des retours (le formulaire la reçoit), mode bêta (mode d'emploi) */
 const CONF = { decks: ['aic'], source: 'beta', beta: true, titre: 'Bêta · Mini-deck AIC et Obeya' };
@@ -370,7 +370,7 @@ function show(hash, label) {
   frame = document.createElement('iframe');
   frame.className = 'frame'; frame.title = label;
   frame.style.width = (matchMedia('(max-width:820px)').matches ? 620 : 1200) + 'px'; frame.style.height = '900px';   // téléphone : recto et verso l'un sous l'autre
-  frame.src = 'deck.html?v=99b0c38f#' + hash + '&t=' + Date.now();
+  frame.src = 'deck.html?rev=d199f133#' + hash + '&t=' + Date.now();
   stage.appendChild(frame);
   const alerts = document.createElement('div'); alerts.className = 'alerts'; alerts.innerHTML = CONF.beta ? '<h3>Chargement de la carte…</h3>' : '<h3>Rendu en cours…</h3>';
   const fail = () => { clearInterval(poll); alerts.className = 'alerts ko'; alerts.innerHTML = '<h3>La carte ne s’est pas affichée</h3><p>Vérifiez votre connexion, puis cliquez sur « Recharger ».</p>'; };
