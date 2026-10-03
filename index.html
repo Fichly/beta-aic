@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Bêta · Mini-deck AIC et Obeya · Fichly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Atelier de relecture : liste des cartes à gauche, carte rendue en direct au centre (recto et verso côte à côte),
+   annotations (note, cercle, flèche, crayon) posées sur la carte, listées à droite et envoyées par le formulaire Tally */
+:root{
+  --bg:#f3f4f9; --panel:#ffffff; --ink:#071246; --muted:#4b5280; --line:#e2e4f0; --accent:#3d449b; --sel:#eceef9;
+  --ok:#2a6b42; --okbg:#e3f2db; --wait:#7a5e05; --waitbg:#fbf0d2; --ko:#9e2f2f; --kobg:#fde4e4; --stage:#e9ebf3;
+  --mark:#d93b42; --markbg:#fde4e4; --shadow:rgba(7,18,70,.16); --on-accent:#ffffff;
+  --sans:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1230; --panel:#151b3e; --ink:#eef0fb; --muted:#aab0d6; --line:#2a3160; --accent:#b9bcf0; --sel:#222a5c;
+  --ok:#9fd98a; --okbg:#1f3a22; --wait:#f0d27a; --waitbg:#3a3112; --ko:#f3a3a3; --kobg:#4a1c1c; --stage:#0a0e26;
+  --mark:#ff8a8f; --markbg:#4a1c1c; --shadow:rgba(0,0,0,.5); --on-accent:#0d1230; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1230; --panel:#151b3e; --ink:#eef0fb; --muted:#aab0d6; --line:#2a3160; --accent:#b9bcf0; --sel:#222a5c;
+  --ok:#9fd98a; --okbg:#1f3a22; --wait:#f0d27a; --waitbg:#3a3112; --ko:#f3a3a3; --kobg:#4a1c1c; --stage:#0a0e26;
+  --mark:#ff8a8f; --markbg:#4a1c1c; --shadow:rgba(0,0,0,.5); --on-accent:#0d1230; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{font:14px/1.45 var(--sans);color:var(--ink);background:var(--bg);display:grid;grid-template-columns:300px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);min-height:0}
+header{grid-column:1/3;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;font-weight:800;margin:0;text-wrap:balance}
+.tabs{display:flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px}
+.tabs[hidden]{display:none}
+.tabs button{border:0;background:none;font:600 13px var(--sans);color:var(--muted);padding:8px 14px;border-radius:9px;cursor:pointer;min-height:36px}
+.tabs button[aria-pressed=true]{background:var(--panel);color:var(--accent)}
+.progress{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{width:160px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .4s}
+aside.cards{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:10px 10px 30px;min-height:0}
+.search{width:100%;font:500 13px var(--sans);padding:9px 12px;border:1px solid var(--line);border-radius:10px;margin:2px 0 8px;color:var(--ink);background:var(--bg)}
+.group{font:800 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 6px 6px;display:flex;align-items:center;gap:8px}
+.group i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.item{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;font:500 13px var(--sans);color:var(--ink);padding:7px 8px;border-radius:10px;cursor:pointer;min-height:40px}
+.item:hover{background:var(--bg)}
+.item[aria-current=true]{background:var(--sel);color:var(--accent);font-weight:700}
+.num{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:800 11px var(--sans);color:#071246;font-variant-numeric:tabular-nums}
+.tags{display:flex;align-items:center;gap:4px}
+.badge{font:700 10.5px var(--sans);padding:3px 8px;border-radius:99px;white-space:nowrap}
+.badge.ok{color:var(--ok);background:var(--okbg)}
+.badge.wait{color:var(--wait);background:var(--waitbg)}
+.cnt{font:700 10.5px var(--sans);padding:3px 7px;border-radius:99px;white-space:nowrap;color:var(--mark);background:var(--markbg);font-variant-numeric:tabular-nums}
+main{display:grid;grid-template-rows:auto auto auto minmax(0,1fr);min-width:0;min-height:0}
+.welcome{margin:0;padding:12px 16px;background:var(--sel);border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:start}
+.welcome[hidden]{display:none}
+.welcome h2{margin:0;font-size:14px;font-weight:800}
+.welcome ol{margin:4px 0 0;padding-left:20px;font-size:13px;max-width:90ch}
+.welcome .x{border:0;background:none;color:var(--muted);font:700 18px var(--sans);cursor:pointer;padding:2px 6px;line-height:1}
+.tools,.annot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.tools h2{margin:0;font-size:15px;font-weight:800;margin-right:auto;min-width:0}
+.tools button,.tools a,.annot button{font:600 12.5px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 12px;cursor:pointer;text-decoration:none;min-height:36px;display:inline-flex;align-items:center;gap:6px}
+.tools label{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.annot{padding:8px 16px}
+.annot .lbl{font:800 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.annot .seg{display:flex;flex-wrap:wrap;gap:4px}
+.annot button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.annot button svg{width:16px;height:16px;flex:none}
+.annot kbd{font:600 10px var(--sans);opacity:.7}
+.swatches{display:flex;gap:6px;align-items:center}
+.swatches button{width:28px;height:28px;min-height:28px;padding:0;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);justify-content:center}
+.swatches button[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink);background:var(--c)}
+.annot .hint{font-size:12px;color:var(--muted);flex:1 1 220px;min-width:0}
+.annot .toggle{margin-left:auto}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;min-width:0}
+.workspace.closed{grid-template-columns:minmax(0,1fr)}
+.workspace.closed .notes{display:none}
+.stage{position:relative;overflow:auto;min-height:0;background:var(--stage)}
+.frame{transform-origin:0 0;border:0;display:block;background:transparent}
+.overlay{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;overflow:visible}
+.overlay.drawing{pointer-events:auto;cursor:crosshair;touch-action:none}
+.overlay .hit{pointer-events:auto;cursor:pointer}
+.overlay.drawing .hit{pointer-events:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.overlay .flash{animation:pulse .5s ease-in-out 3}
+.alerts{position:sticky;left:12px;bottom:12px;margin:0 12px 12px auto;width:min(440px,calc(100% - 24px));max-height:40vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:12.5px;z-index:2}
+.alerts h3{margin:0 0 6px;font-size:13px}
+.alerts ul{margin:0;padding-left:18px}
+.alerts.ok h3{color:var(--ok)}
+.alerts.ko h3{color:var(--ko)}
+.alerts .x{float:right;border:0;background:none;color:var(--muted);font:700 15px var(--sans);cursor:pointer;padding:0 4px}
+.empty{display:grid;place-items:center;height:100%;color:var(--muted);text-align:center;padding:40px 16px;max-width:52ch;margin:0 auto}
+.composer{position:absolute;z-index:5;width:min(320px,calc(100% - 24px));background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 10px 30px var(--shadow);display:grid;gap:8px}
+.composer b{font-size:12.5px}
+.composer textarea{width:100%;min-height:84px;resize:vertical;font:500 13px/1.4 var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.composer .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.composer .row small{margin-right:auto;color:var(--muted);font-size:11px}
+.btn{font:600 12.5px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 12px;cursor:pointer;min-height:34px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-align:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--ko);border-color:var(--ko)}
+aside.notes{background:var(--panel);border-left:1px solid var(--line);display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;min-width:0}
+.notes-h{padding:12px 14px 8px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.notes-h h3{margin:0;font-size:14px;font-weight:800;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.notes-h h3 span{font-weight:600;color:var(--muted);font-size:12px}
+.filter{display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:3px;width:max-content;max-width:100%;flex-wrap:wrap}
+.filter button{border:0;background:none;font:600 12px var(--sans);color:var(--muted);padding:5px 10px;border-radius:8px;cursor:pointer;min-height:30px;font-variant-numeric:tabular-nums}
+.filter button[aria-pressed=true]{background:var(--panel);color:var(--accent)}
+.status{font-size:12px;color:var(--muted)}
+.status:empty{display:none}
+.status.warn{color:var(--wait)}
+.notes ol{list-style:none;margin:0;padding:8px 10px 16px;overflow:auto;display:grid;gap:8px;align-content:start;min-height:0}
+.note{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px 10px;background:var(--panel)}
+.note.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.note.sent{opacity:.72}
+.note .pin{width:28px;height:28px;border-radius:50%;border:0;color:#ffffff;background:var(--c);font:800 12px var(--sans);cursor:pointer;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.note .meta{font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.note .meta .st{font-weight:700;padding:1px 7px;border-radius:99px;color:var(--wait);background:var(--waitbg)}
+.note.sent .meta .st{color:var(--ok);background:var(--okbg)}
+.note .txt{grid-column:2;margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+.note .txt.vide{color:var(--ko);font-style:italic}
+.note .acts{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.note .acts .btn{min-height:30px;padding:4px 10px;font-size:12px}
+.notes .none{color:var(--muted);font-size:13px;padding:10px 6px}
+.notes-f{padding:10px 14px 14px;border-top:1px solid var(--line);display:grid;gap:8px;font-size:12px;color:var(--muted)}
+.notes-f .sendlinks{display:grid;gap:6px}
+.notes-f .btn.primary{min-height:40px;font-size:13.5px}
+.notes-f .btn[aria-disabled=true]{opacity:.5;pointer-events:none}
+.who{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.who[hidden]{display:none}
+.who b{color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.who button{font:600 12px var(--sans);color:var(--accent);background:none;border:0;cursor:pointer;padding:4px;text-decoration:underline}
+.gate{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px 16px;overflow:auto}
+.gate[hidden]{display:none}
+.gate form{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;display:grid;gap:12px;box-shadow:0 10px 30px var(--shadow)}
+.gate h2{margin:0;font-size:19px;font-weight:800;text-wrap:balance}
+.gate p{margin:0;color:var(--muted);font-size:13.5px}
+.gate input{font:600 18px var(--sans);letter-spacing:.08em;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);width:100%}
+.gate .err{color:var(--ko);font-size:13px;min-height:1.2em}
+.gate a{color:var(--accent);font-weight:600}
+.codebox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--panel);border:1px dashed var(--accent);font-size:13px}
+.codebox[hidden]{display:none}
+.codebox b{font-size:18px;letter-spacing:.08em;color:var(--ink);font-variant-numeric:tabular-nums}
+@media (max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) 290px}}
+@media (max-width:820px){
+  body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+  header{grid-column:1}
+  aside.cards{max-height:28vh;border-right:0;border-bottom:1px solid var(--line)}
+  .progress{margin-left:0}
+  .workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(320px,1fr) auto}
+  aside.notes{border-left:0;border-top:1px solid var(--line);max-height:50vh}
+  .annot .hint{flex-basis:100%}
+  .annot kbd{display:none}
+}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}.overlay .flash{animation:none}}
+[hidden]{display:none!important}
+.filter{display:none!important}
+.note .meta .st.ok{color:var(--ok);background:var(--okbg)}
+.note .meta .st.ko{color:var(--ko);background:var(--kobg)}
+.avis{display:grid;gap:6px}
+.avis textarea{width:100%;min-height:70px;resize:vertical;font:500 13px/1.4 var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.avis .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sync{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ok)}
+.sync.ko{color:var(--ko)}
+.sync.wait{color:var(--wait)}
+.gate .tabs2{display:flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px}
+.gate .tabs2 button{flex:1;border:0;background:none;font:600 13px var(--sans);color:var(--muted);padding:9px 10px;border-radius:9px;cursor:pointer;min-height:40px}
+.gate .tabs2 button[aria-pressed=true]{background:var(--panel);color:var(--accent)}
+.gate label{font:700 12.5px var(--sans);display:grid;gap:5px}
+.gate .opt{font-weight:500;color:var(--muted)}
+.gate input[type=text],.gate input[type=email]{font:500 15px var(--sans);letter-spacing:0;padding:10px 12px}
+.gate .check{display:flex;gap:10px;align-items:flex-start;font:500 13px var(--sans)}
+.gate .check input{width:20px;height:20px;margin:1px 0 0;flex:none}
+.gate .bigcode{font:800 30px var(--sans);letter-spacing:.14em;text-align:center;padding:14px;border-radius:14px;background:var(--sel);color:var(--ink);font-variant-numeric:tabular-nums}
+.gate [hidden]{display:none!important}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{height:26px;width:auto}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><picture><source srcset="assets/logo-fichly-blanc.png" media="(prefers-color-scheme: dark)"><img src="assets/logo-fichly.png" alt="Fichly"></picture><h1 id="h1">Bêta · Mini-deck AIC et Obeya</h1></div>
+  <div class="tabs" id="tabs" role="group" aria-label="Deck">
+    <button type="button" data-deck="lean" aria-pressed="true">Outils du Lean</button>
+    <button type="button" data-deck="aic" aria-pressed="false">AIC et Obeya</button>
+  </div>
+  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><button type="button" id="logout">Se déconnecter</button></div>
+  <div class="progress" hidden><span id="count"></span><div class="bar" aria-hidden="true"><i id="barfill"></i></div></div>
+</header>
+<aside class="cards">
+  <input class="search" id="q" type="search" placeholder="Chercher une carte (nom ou numéro)" aria-label="Chercher une carte">
+  <nav id="list" aria-label="Cartes"></nav>
+</aside>
+<main>
+  <section class="welcome" id="welcome" hidden aria-label="Mode d’emploi">
+    <div>
+      <h2>Merci de tester le mini-deck AIC et Obeya</h2>
+      <ol>
+        <li>Ouvrez les cartes une à une dans la liste.</li>
+        <li>Annotez ce qui vous gêne ou vous plaît : <b>Note</b> (un clic), <b>Entourer</b>, <b>Flèche</b> ou <b>Crayon</b> (cliquez et faites glisser), puis écrivez votre commentaire.</li>
+        <li>Chaque commentaire est <b>enregistré automatiquement</b>. Revenez quand vous voulez, sur n’importe quel appareil, avec votre code personnel.</li>
+      </ol>
+      <div class="codebox" id="codebox" hidden>Votre code personnel : <b id="codeShow"></b><button type="button" class="btn" id="codeCopy">Copier</button><span>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</span></div>
+    </div>
+    <button type="button" class="x" id="welcomeClose" aria-label="Masquer le mode d’emploi">×</button>
+  </section>
+  <div class="tools">
+    <h2 id="title">Choisissez une carte</h2>
+    <label for="zoom">Zoom <input id="zoom" type="range" min="20" max="120" value="60"></label>
+    <button type="button" id="reload">Recharger</button>
+    <button type="button" id="whole">Deck entier</button>
+    <a id="open" href="deck.html" target="_blank" rel="noopener" hidden>Ouvrir seule</a>
+  </div>
+  <div class="annot" id="annot" role="toolbar" aria-label="Annoter la carte">
+    <span class="lbl">Annoter</span>
+    <div class="seg">
+      <button type="button" data-tool="note" aria-pressed="false" title="Note : cliquez à l’endroit voulu (raccourci N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Note <kbd>N</kbd></button>
+      <button type="button" data-tool="cercle" aria-pressed="false" title="Entourer : cliquez et faites glisser autour de la zone (raccourci E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>Entourer <kbd>E</kbd></button>
+      <button type="button" data-tool="fleche" aria-pressed="false" title="Flèche : faites glisser depuis l’origine jusqu’à ce qu’il faut montrer (raccourci F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M10 5h9v9"/></svg>Flèche <kbd>F</kbd></button>
+      <button type="button" data-tool="crayon" aria-pressed="false" title="Crayon : dessinez à main levée (raccourci D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>Crayon <kbd>D</kbd></button>
+    </div>
+    <div class="swatches" id="swatches" role="group" aria-label="Couleur"></div>
+    <span class="hint" id="hint">Choisissez un outil, puis cliquez ou tracez sur la carte. Chaque annotation demande un commentaire.</span>
+    <button type="button" class="toggle" id="toggleNotes" aria-pressed="true">Mes commentaires <span id="openCount" class="cnt" hidden></span></button>
+  </div>
+  <div class="workspace" id="workspace">
+    <div class="stage" id="stage"><div class="empty">Choisissez une carte dans la liste : elle s’affiche ici, rendue en direct, recto et verso côte à côte. Vous pouvez ensuite l’annoter.</div></div>
+    <aside class="notes" aria-label="Mes commentaires">
+      <div class="notes-h">
+        <h3>Mes commentaires <span id="scope"></span></h3>
+        <div class="filter" role="group" aria-label="Afficher">
+          <button type="button" data-f="brouillon" aria-pressed="true">À envoyer <span id="nDraft"></span></button>
+          <button type="button" data-f="envoye" aria-pressed="false">Envoyés <span id="nSent"></span></button>
+          <button type="button" data-f="tout" aria-pressed="false">Tous</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </div>
+      <ol id="notes"></ol>
+      <div class="notes-f">
+        <div class="sync" id="sync" role="status">Enregistrement automatique</div>
+        <div class="avis">
+          <label for="avisText" style="font:700 12.5px var(--sans);color:var(--ink)">Un dernier mot sur le mini-deck ?</label>
+          <textarea id="avisText" maxlength="4000" placeholder="Ce qui vous a plu, ce qui manque, ce qui est difficile à comprendre…"></textarea>
+          <div class="row"><button type="button" class="btn" id="avisSave">Enregistrer ce mot</button><span id="avisInfo"></span></div>
+        </div>
+        <span id="sendHelp" hidden></span><div id="send" hidden></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="gate" id="gate" hidden>
+  <form id="gateForm" novalidate>
+    <picture style="justify-self:start"><source srcset="assets/logo-fichly-blanc.png" media="(prefers-color-scheme: dark)"><img src="assets/logo-fichly.png" alt="Fichly" style="height:30px;width:auto;display:block"></picture>
+    <h2>Bêta du mini-deck AIC et Obeya</h2>
+    <div class="tabs2" role="group" aria-label="Accès">
+      <button type="button" data-g="inscr" aria-pressed="true">Première visite</button>
+      <button type="button" data-g="code" aria-pressed="false">J’ai mon code</button>
+    </div>
+    <div id="gInscr" style="display:grid;gap:10px">
+      <p>Inscrivez-vous en une minute : votre code personnel s’affiche à la fin et vous accédez aux cartes.</p>
+      <label>Prénom <input type="text" id="fPrenom" autocomplete="given-name" maxlength="80"></label>
+      <label>Nom <input type="text" id="fNom" autocomplete="family-name" maxlength="80"></label>
+      <label>E-mail <input type="email" id="fEmail" autocomplete="email" maxlength="200"></label>
+      <label>Fonction et entreprise <span class="opt">(facultatif)</span><input type="text" id="fFonction" autocomplete="organization-title" maxlength="200" placeholder="Ex. : responsable de production chez…"></label>
+      <label class="check"><input type="checkbox" id="fAccord"><span>J’accepte que Fichly utilise mes commentaires pour améliorer le mini-deck.</span></label>
+    </div>
+    <div id="gCode" style="display:grid;gap:10px" hidden>
+      <p>Entrez le code personnel reçu à votre inscription.</p>
+      <label>Code personnel <input id="codeInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. : K7P4QM9X"></label>
+    </div>
+    <div id="gDone" style="display:grid;gap:10px" hidden>
+      <p>Bienvenue <b id="doneName"></b> ! Voici votre code personnel :</p>
+      <div class="bigcode" id="doneCode"></div>
+      <p>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</p>
+      <button type="button" class="btn" id="doneCopy">Copier le code</button>
+    </div>
+    <div class="err" id="gateErr" role="alert"></div>
+    <button type="submit" class="btn primary" id="gateGo" style="min-height:46px;font-size:14.5px">M’inscrire et recevoir mon code</button>
+  </form>
+</div>
+
+<script src="cards/registry.js"></script>
+<script>
+/* Réglages de la page : decks montrés, origine des retours (le formulaire la reçoit), mode bêta (mode d'emploi) */
+const CONF = { decks: ['aic'], source: 'beta', beta: true, titre: 'Bêta · Mini-deck AIC et Obeya' };
+const SB = { url: 'https://ewxjaphvlatzkwaihozi.supabase.co', key: 'sb_publishable_IDWUkiAA8WYaD_NxuXdQcw_T_TFSlSY' };
+const TALLY = 'https://tally.so/r/QKPLJp', INSCRIPTION = 'https://tally.so/r/MeoBvY';
+const CODE_RE = /^[A-Z0-9]{6,16}$/;   // code personnel : préparé par la page, enregistré par le formulaire d'inscription (champ caché « code »)
+const normCode = v => String(v || '').trim().replace(/^#/, '').replace(/[\s-]/g, '').toUpperCase();
+function newCode() {   // 8 caractères sans ambiguïté (pas de 0/O, 1/I/L)
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = new Uint32Array(8); crypto.getRandomValues(r);
+  return Array.from(r, x => A[x % A.length]).join('');
+}
+let CODE = null;
+
+const FAMC = { 0: '#3d449b', 1: '#e6b839', 2: '#75bec0', 3: '#8cc978', 4: '#f16969', 5: '#aa76b2', 6: '#74a3d6' };
+const FAMN = { 0: 'Introduction', 1: 'Résolution de problèmes', 2: 'Engagement et visualisation', 3: 'Planification et gestion stratégique', 4: 'Optimisation des processus', 5: 'Efficacité de production', 6: 'Amélioration de la qualité' };
+let deck = CONF.decks[0], current = null, ready = {}, frame = null, poll = null;
+const $ = id => document.getElementById(id);
+const ids = d => Object.keys(REG).filter(k => REG[k].deck === d).sort((a, b) => REG[a].order - REG[b].order);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+async function exists(id) {
+  try { const r = await fetch(REG[id].file + '?t=' + Date.now(), { cache: 'no-store' }); return r.ok && (await r.text()).includes('addCard'); } catch (e) { return false; }
+}
+async function refreshStatus() {
+  await Promise.all(ids(deck).map(async id => { ready[id] = await exists(id); }));
+  const mine = ids(deck), done = mine.filter(id => ready[id]).length;
+  $('count').textContent = `${done} / ${mine.length} cartes prêtes`;
+  $('barfill').style.width = (100 * done / mine.length) + '%';
+  renderList();
+}
+function renderList() {
+  const q = $('q').value.trim().toLowerCase();
+  const open = {};
+  ANN.forEach(a => { open[a.card] = (open[a.card] || 0) + 1; });
+  let html = '', last = null;
+  ids(deck).forEach(id => {
+    const r = REG[id];
+    if (q && !(`${r.num} ${r.name}`.toLowerCase().includes(q))) return;
+    const grp = r.section || FAMN[r.fam];
+    if (grp !== last) { html += `<div class="group"><i style="background:${FAMC[r.fam]}"></i>${esc(grp)}</div>`; last = grp; }
+    const n = open[id] || 0;
+    html += `<button type="button" class="item" data-id="${id}" aria-current="${id === current}">
+      <span class="num" style="background:${FAMC[r.fam]}${r.fam === 0 ? ';color:#ffffff' : ''}">${r.num}</span>
+      <span>${esc(r.name)}</span>
+      <span class="tags">${n ? `<span class="cnt" title="${n} commentaire${n > 1 ? 's' : ''}">${n}</span>` : ''}${CONF.beta ? '' : `<span class="badge ${ready[id] ? 'ok' : 'wait'}">${ready[id] ? 'prête' : 'en cours'}</span>`}</span></button>`;
+  });
+  $('list').innerHTML = html || '<p style="padding:8px;color:var(--muted)">Aucune carte ne correspond.</p>';
+}
+const zoomVal = () => $('zoom').value / 100;
+function applyZoom() {
+  if (!frame) return;
+  const z = zoomVal(), w = parseFloat(frame.style.width) || 1200, h = parseFloat(frame.style.height) || 900;
+  frame.style.transform = `scale(${z})`;
+  frame.style.marginBottom = (h * z - h) + 'px';
+  frame.style.marginRight = (w * z - w) + 'px';
+  if (overlay) { overlay.style.transform = `scale(${z})`; renderOverlay(); }
+  placeComposer();
+}
+function show(hash, label) {
+  clearInterval(poll);
+  closeComposer(); drawing = null;
+  $('title').textContent = label;
+  $('open').href = 'deck.html#' + hash.replace('&view=row', '');
+  const stage = $('stage'); stage.innerHTML = '';
+  sheets = []; overlay = null;
+  frame = document.createElement('iframe');
+  frame.className = 'frame'; frame.title = label;
+  frame.style.width = '1200px'; frame.style.height = '900px';
+  frame.src = 'deck.html#' + hash + '&t=' + Date.now();
+  stage.appendChild(frame);
+  const alerts = document.createElement('div'); alerts.className = 'alerts'; alerts.innerHTML = '<h3>Rendu en cours…</h3>';
+  stage.appendChild(alerts);
+  applyZoom();
+  renderNotes();
+  let tries = 0;
+  poll = setInterval(() => {
+    tries++;
+    let w; try { w = frame.contentWindow; } catch (e) { return; }
+    if (w && w.__ready) {
+      clearInterval(poll);
+      const doc = w.document;
+      frame.style.width = Math.max(doc.documentElement.scrollWidth, 400) + 'px';
+      frame.style.height = doc.documentElement.scrollHeight + 'px';
+      if (!$('zoom').dataset.touched) $('zoom').value = Math.max(20, Math.min(120, Math.floor(100 * (stage.clientWidth - 24) / parseFloat(frame.style.width))));
+      measureSheets(doc);
+      makeOverlay();
+      applyZoom();
+      if (CONF.beta) { alerts.remove(); return; }   // les testeurs n'ont pas besoin des alertes de mise en page
+      const errs = w.__errors || [], rep = w.__report || [];
+      alerts.className = 'alerts ' + (errs.length ? 'ko' : 'ok');
+      alerts.innerHTML = `<button type="button" class="x" aria-label="Masquer">×</button>` + (errs.length
+        ? `<h3>${errs.length} alerte${errs.length > 1 ? 's' : ''}</h3><ul>${errs.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`
+        : `<h3>Aucune alerte</h3><div>${rep.map(esc).join('<br>')}</div>`);
+      alerts.querySelector('.x').onclick = () => alerts.remove();
+    } else if (w && (w.__errors || []).some(e => e.startsWith('JS'))) {
+      clearInterval(poll); alerts.className = 'alerts ko';
+      alerts.innerHTML = `<h3>La carte ne se rend pas</h3><ul>${w.__errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`;
+    } else if (tries > 240) {
+      clearInterval(poll); alerts.className = 'alerts ko';
+      alerts.innerHTML = '<h3>La carte ne se rend pas</h3><p>Réessayez avec « Recharger ».</p>';
+    }
+  }, 250);
+}
+function showCard(id) {
+  current = id; renderList();
+  const r = REG[id];
+  show(`deck=${r.deck}&only=${id}&view=row`, `N°${r.num} · ${r.name}`);
+}
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  deck = b.dataset.deck;
+  $('tabs').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  current = null; refreshStatus(); renderNotes();
+});
+$('list').addEventListener('click', e => { const b = e.target.closest('.item'); if (b) showCard(b.dataset.id); });
+$('q').addEventListener('input', renderList);
+$('zoom').addEventListener('input', () => { $('zoom').dataset.touched = '1'; applyZoom(); });
+$('reload').addEventListener('click', () => { if (!frame) return; current ? showCard(current) : $('whole').click(); });
+$('whole').addEventListener('click', () => { current = null; renderList(); show(`deck=${deck}&view=row`, deck === 'lean' ? 'Deck « Outils du Lean » entier' : 'Mini-deck AIC et Obeya entier'); });
+
+/* =========================================================
+   Annotations : note, cercle, flèche, crayon posés sur une page de carte, avec un commentaire.
+   Elles restent dans ce navigateur (brouillon) jusqu'à l'envoi : le lien « Envoyer mes retours » ouvre
+   le formulaire Tally avec les annotations dans le champ caché « retours » ;
+   la page de validation de Hugo les lit ensuite dans Tally.
+   Une annotation : { id, deck, card, page: 'aic-14-01', type, geo (coordonnées 0 à 1 dans la page), text, color,
+                      status: 'brouillon' | 'envoye', createdAt, sentAt }
+   ========================================================= */
+const COLORS = [['#e5484d', 'Rouge'], ['#2563eb', 'Bleu'], ['#16a34a', 'Vert']];
+const TYPES = { note: 'Note', cercle: 'Entouré', fleche: 'Flèche', crayon: 'Crayon' };
+let KEY = 'fichly-annotations-' + CONF.source;   // en bêta, complété par le code du testeur : chacun ne voit que ses commentaires
+let ANN = [], tool = null, color = COLORS[0][0], filter = 'tout', selected = null;
+let sheets = [], overlay = null, drawing = null, composer = null, lastNums = {};
+
+function load() { try { const v = JSON.parse(lsGet(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function persist() {
+  if (!lsSet(KEY, JSON.stringify(ANN))) setStatus('Ce navigateur n’enregistre pas les brouillons : envoyez vos retours avant de fermer la page.', true);
+  renderList(); renderOverlay(); renderNotes(); renderSend();
+}
+function setStatus(t, warn) { $('status').textContent = t; $('status').className = 'status' + (warn ? ' warn' : ''); }
+
+// Pages visibles : position de chaque page (.sheet) dans le document de la carte, en pixels non zoomés
+function measureSheets(doc) {
+  const w = doc.defaultView;
+  sheets = [...doc.querySelectorAll('.sheet')].map(sh => {
+    const r = sh.getBoundingClientRect();
+    return { name: sh.dataset.name, card: sh.dataset.card, x: r.left + w.scrollX, y: r.top + w.scrollY, w: r.width, h: r.height };
+  });
+}
+const sheetOf = name => sheets.find(s => s.name === name);
+const toPx = (s, p) => [s.x + p[0] * s.w, s.y + p[1] * s.h];
+const r3 = v => Math.round(v * 1000) / 1000;
+const clampN = v => Math.max(-0.1, Math.min(1.1, v));
+function makeOverlay() {
+  overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  overlay.classList.add('overlay');
+  overlay.setAttribute('aria-hidden', 'true');
+  const w = parseFloat(frame.style.width), h = parseFloat(frame.style.height);
+  overlay.setAttribute('width', w); overlay.setAttribute('height', h);
+  overlay.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  $('stage').insertBefore(overlay, frame.nextSibling);
+  overlay.addEventListener('pointerdown', onDown);
+  overlay.addEventListener('pointermove', onMove);
+  overlay.addEventListener('pointerup', onUp);
+  overlay.addEventListener('pointercancel', () => { if (drawing && drawing.live) { drawing = null; renderOverlay(); } });
+  overlay.addEventListener('click', e => { const g = e.target.closest('[data-ann]'); if (g) selectAnn(g.dataset.ann); });
+  renderOverlay();
+}
+function framePoint(e) {
+  const r = overlay.getBoundingClientRect(), z = zoomVal();
+  return [(e.clientX - r.left) / z, (e.clientY - r.top) / z];
+}
+function onDown(e) {
+  if (!tool) return;
+  const p = framePoint(e);
+  const s = sheets.find(s => p[0] >= s.x && p[0] <= s.x + s.w && p[1] >= s.y && p[1] <= s.y + s.h);
+  if (!s) return;
+  e.preventDefault();
+  closeComposer();
+  const n = [r3((p[0] - s.x) / s.w), r3((p[1] - s.y) / s.h)];
+  if (tool === 'note') { drawing = { type: 'note', sheet: s, geo: { x: n[0], y: n[1] } }; openComposer(); renderOverlay(); return; }
+  try { overlay.setPointerCapture(e.pointerId); } catch (err) {}
+  drawing = { type: tool, sheet: s, a: n, b: n, pts: [n], live: true };
+  renderOverlay();
+}
+function onMove(e) {
+  if (!drawing || !drawing.live) return;
+  const s = drawing.sheet, p = framePoint(e);
+  const n = [r3(clampN((p[0] - s.x) / s.w)), r3(clampN((p[1] - s.y) / s.h))];
+  drawing.b = n;
+  if (drawing.type === 'crayon') {
+    const l = drawing.pts[drawing.pts.length - 1];
+    if (Math.hypot((n[0] - l[0]) * s.w, (n[1] - l[1]) * s.h) > 4) drawing.pts.push(n);
+  }
+  renderOverlay();
+}
+function onUp() {
+  if (!drawing || !drawing.live) return;
+  const d = drawing, s = d.sheet; d.live = false;
+  const span = Math.hypot((d.b[0] - d.a[0]) * s.w, (d.b[1] - d.a[1]) * s.h);
+  if (d.type === 'crayon' ? d.pts.length < 3 : span < 12) { drawing = null; renderOverlay(); setStatus('Tracé trop court : maintenez le clic (ou le doigt) et faites glisser.'); return; }
+  if (d.type === 'crayon') {   // au plus 40 points : le tracé voyage dans le lien du formulaire
+    let pts = d.pts; const step = Math.ceil(pts.length / 40);
+    if (step > 1) pts = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+    d.geo = { pts };
+  } else d.geo = { x1: d.a[0], y1: d.a[1], x2: d.b[0], y2: d.b[1] };
+  openComposer(); renderOverlay();
+}
+
+// Dessin des annotations (coordonnées du document de la carte ; épaisseurs corrigées du zoom)
+function shapeSvg(type, geo, s, col, z, extra) {
+  const sw = (3.2 / z).toFixed(2);
+  const base = `fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"${extra || ''}`;
+  if (type === 'cercle') {
+    const [x1, y1] = toPx(s, [geo.x1, geo.y1]), [x2, y2] = toPx(s, [geo.x2, geo.y2]);
+    return `<ellipse cx="${(x1 + x2) / 2}" cy="${(y1 + y2) / 2}" rx="${Math.abs(x2 - x1) / 2}" ry="${Math.abs(y2 - y1) / 2}" ${base}/>`;
+  }
+  if (type === 'fleche') {
+    const [x1, y1] = toPx(s, [geo.x1, geo.y1]), [x2, y2] = toPx(s, [geo.x2, geo.y2]);
+    const a = Math.atan2(y2 - y1, x2 - x1), L = 16 / z;
+    const h1 = [x2 - L * Math.cos(a - .45), y2 - L * Math.sin(a - .45)], h2 = [x2 - L * Math.cos(a + .45), y2 - L * Math.sin(a + .45)];
+    return `<path d="M${x1} ${y1}L${x2} ${y2}M${h1[0]} ${h1[1]}L${x2} ${y2}L${h2[0]} ${h2[1]}" ${base}/>`;
+  }
+  if (type === 'crayon') {
+    const pts = (geo.pts || []).map(p => toPx(s, p));
+    return pts.length ? `<path d="M${pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L')}" ${base}/>` : '';
+  }
+  return '';
+}
+function anchorOf(a, s) {
+  const g = a.geo || {};
+  if (a.type === 'note') return toPx(s, [g.x, g.y]);
+  if (a.type === 'cercle') { const p1 = toPx(s, [g.x1, g.y1]), p2 = toPx(s, [g.x2, g.y2]); return [Math.max(p1[0], p2[0]), Math.min(p1[1], p2[1])]; }
+  if (a.type === 'fleche') return toPx(s, [g.x1, g.y1]);
+  return toPx(s, (g.pts && g.pts[0]) || [0, 0]);
+}
+function numbers() {   // numéro d'une annotation = son rang dans sa carte, par date de création
+  const per = {}, nums = {};
+  ANN.forEach(a => { per[a.card] = (per[a.card] || 0) + 1; nums[a.id] = per[a.card]; });
+  return nums;
+}
+const visible = a => filter === 'tout' || (filter === 'envoye' ? a.status === 'envoye' : a.status !== 'envoye');
+function renderOverlay() {
+  if (!overlay) return;
+  overlay.classList.toggle('drawing', !!tool);
+  const z = zoomVal(), nums = lastNums = numbers();
+  let out = '';
+  ANN.forEach(a => {
+    const s = sheetOf(a.page); if (!s || !visible(a)) return;
+    const col = a.color || COLORS[0][0], sent = a.status === 'envoye', sel = a.id === selected;
+    const [ax, ay] = anchorOf(a, s), r = 12 / z;
+    out += `<g data-ann="${esc(a.id)}" class="hit${sel ? ' flash' : ''}" opacity="${sent ? .45 : 1}">`;
+    if (a.type !== 'note') {
+      out += shapeSvg(a.type, a.geo || {}, s, col, z);
+      out += shapeSvg(a.type, a.geo || {}, s, 'transparent', z / 4);   // zone cliquable plus large
+    }
+    out += `<circle cx="${ax}" cy="${ay}" r="${r}" fill="${col}" stroke="#ffffff" stroke-width="${2 / z}"/>`;
+    out += `<text x="${ax}" y="${ay}" dy=".35em" text-anchor="middle" fill="#ffffff" font-family="Poppins,sans-serif" font-weight="800" font-size="${12 / z}">${nums[a.id]}</text></g>`;
+  });
+  if (drawing) {
+    const s = drawing.sheet, geo = drawing.geo || (drawing.type === 'crayon' ? { pts: drawing.pts } : { x1: drawing.a[0], y1: drawing.a[1], x2: drawing.b[0], y2: drawing.b[1] });
+    if (drawing.type === 'note') { const [x, y] = toPx(s, [geo.x, geo.y]); out += `<circle cx="${x}" cy="${y}" r="${12 / z}" fill="${color}" stroke="#ffffff" stroke-width="${2 / z}"/><text x="${x}" y="${y}" dy=".35em" text-anchor="middle" fill="#ffffff" font-family="Poppins,sans-serif" font-weight="800" font-size="${12 / z}">+</text>`; }
+    else out += shapeSvg(drawing.type, geo, s, color, z, drawing.live ? '' : ` stroke-dasharray="${8 / z} ${6 / z}"`);
+  }
+  overlay.innerHTML = out;
+}
+
+// Bulle de saisie d'un commentaire, ancrée sur l'annotation
+function openComposer(edit) {
+  closeComposer();
+  const c = document.createElement('form');
+  c.className = 'composer';
+  const what = edit ? `Modifier le commentaire n°${lastNums[edit.id] || ''}` : { note: 'Nouvelle note', cercle: 'Zone entourée', fleche: 'Flèche', crayon: 'Tracé au crayon' }[drawing.type];
+  c.innerHTML = `<b></b><textarea aria-label="Commentaire" placeholder="Ce qui ne va pas, ce qu’il faudrait changer, ou ce qui vous plaît…" maxlength="1500"></textarea>
+    <div class="row"><small>Ctrl + Entrée pour enregistrer</small><button type="button" class="btn" data-a="cancel">Annuler</button><button type="submit" class="btn primary">Enregistrer</button></div>`;
+  c.querySelector('b').textContent = what;
+  const ta = c.querySelector('textarea');
+  if (edit) ta.value = edit.text || '';
+  composer = { el: c, edit };
+  $('stage').appendChild(c);
+  placeComposer();
+  ta.focus({ preventScroll: true });
+  c.addEventListener('submit', e => { e.preventDefault(); saveComposer(); });
+  c.querySelector('[data-a=cancel]').onclick = () => { closeComposer(); drawing = null; renderOverlay(); };
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveComposer(); }
+    if (e.key === 'Escape') { e.preventDefault(); closeComposer(); drawing = null; renderOverlay(); }
+  });
+}
+function placeComposer() {
+  if (!composer) return;
+  const z = zoomVal(), stage = $('stage');
+  let ax, ay;
+  if (composer.edit) { const a = composer.edit, s = sheetOf(a.page); [ax, ay] = s ? anchorOf(a, s) : [stage.scrollLeft / z + 20, stage.scrollTop / z + 20]; }
+  else { const d = drawing; if (!d) return; const g = d.geo || {}; [ax, ay] = d.type === 'note' ? toPx(d.sheet, [g.x, g.y]) : toPx(d.sheet, d.type === 'crayon' ? g.pts[g.pts.length - 1] : [g.x2, g.y2]); }
+  const el = composer.el, W = el.offsetWidth || 320, H = el.offsetHeight || 190;
+  let x = ax * z + 14, y = ay * z + 14;
+  const maxX = stage.scrollLeft + stage.clientWidth - W - 8, maxY = stage.scrollTop + stage.clientHeight - H - 8;
+  if (x > maxX) x = Math.max(stage.scrollLeft + 8, ax * z - W - 14);
+  if (y > maxY) y = Math.max(stage.scrollTop + 8, maxY);
+  el.style.left = Math.max(8, x) + 'px'; el.style.top = Math.max(8, y) + 'px';
+}
+function closeComposer() { if (composer) { composer.el.remove(); composer = null; } }
+function saveComposer() {
+  if (!composer) return;
+  const text = composer.el.querySelector('textarea').value.trim();
+  if (!text) { composer.el.querySelector('textarea').focus(); setStatus('Écrivez un commentaire : il dit ce qu’il faut changer.', true); return; }
+  if (composer.edit) {
+    const a = ANN.find(x => x.id === composer.edit.id);
+    if (a) { a.text = text; a.status = 'brouillon'; delete a.sentAt; }
+    closeComposer(); setStatus('Commentaire modifié.'); persist(); return;
+  }
+  const d = drawing, s = d.sheet;
+  ANN.push({ id: 'n' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), deck: REG[s.card] ? REG[s.card].deck : deck, card: s.card, page: s.name, type: d.type, geo: d.geo, text, color, status: 'brouillon', createdAt: new Date().toISOString() });
+  closeComposer(); drawing = null;
+  setStatus('Commentaire enregistré. Il partira avec « Envoyer mes retours ».');
+  persist();
+}
+
+// Liste des commentaires : ceux de la carte affichée, ou de tout le deck en vue « deck entier »
+function pageLabel(a) { const k = +String(a.page).slice(-2); return k === 1 ? 'recto' : k === 2 ? 'verso' : `page ${k}`; }
+function renderNotes() {
+  const scopeIds = current ? [current] : ids(deck);
+  const mine = ANN.filter(a => scopeIds.includes(a.card));
+  const drafts = mine.filter(a => a.status !== 'envoye').length, sent = mine.length - drafts;
+  $('nDraft').textContent = drafts ? `(${drafts})` : ''; $('nSent').textContent = sent ? `(${sent})` : '';
+  $('scope').textContent = current ? `N°${REG[current].num} · ${REG[current].name}` : 'toutes les cartes';
+  const allDrafts = ANN.length;
+  $('openCount').hidden = !allDrafts; $('openCount').textContent = allDrafts;
+  const nums = numbers(), ol = $('notes'); ol.innerHTML = '';
+  const list = mine.filter(visible);
+  if (!list.length) {
+    const li = document.createElement('li'); li.className = 'none';
+    li.textContent = mine.length ? 'Aucun commentaire dans ce filtre.' : 'Aucun commentaire. Choisissez « Note », « Entourer », « Flèche » ou « Crayon », puis cliquez sur la carte.';
+    ol.appendChild(li); return;
+  }
+  list.forEach(a => {
+    const r = REG[a.card] || { num: '?', name: a.card };
+    const li = document.createElement('li');
+    li.className = 'note' + (a.id === selected ? ' sel' : '');
+    li.dataset.id = a.id;
+    li.style.setProperty('--c', a.color || COLORS[0][0]);
+    li.innerHTML = `<button type="button" class="pin" data-a="go"></button><div class="meta"><span class="where"></span><span class="st"></span></div><p class="txt"></p>
+      <div class="acts"><button type="button" class="btn" data-a="edit">Modifier</button><button type="button" class="btn" data-a="del">Supprimer</button></div>`;
+    li.querySelector('.pin').textContent = nums[a.id];
+    li.querySelector('.pin').setAttribute('aria-label', `Montrer l’annotation ${nums[a.id]} sur la carte`);
+    li.querySelector('.where').textContent = `${current ? '' : `N°${r.num} ${r.name} · `}${pageLabel(a)} · ${TYPES[a.type] || a.type}`;
+    const st = syncState(a); li.querySelector('.st').textContent = st === 'ok' ? 'enregistré' : st === 'ko' ? 'non enregistré' : 'enregistrement…'; li.querySelector('.st').classList.add(st);
+    const t = li.querySelector('.txt');
+    if (a.text) t.textContent = a.text; else { t.textContent = 'Commentaire manquant : cliquez sur Modifier.'; t.classList.add('vide'); }
+    ol.appendChild(li);
+  });
+}
+$('notes').addEventListener('click', async e => {
+  const b = e.target.closest('button'); const li = e.target.closest('.note'); if (!li) return;
+  const a = ANN.find(x => x.id === li.dataset.id); if (!a) return;
+  const act = b ? b.dataset.a : 'go';
+  if (act === 'go') return goTo(a);
+  if (act === 'edit') { await goTo(a); drawing = null; return openComposer(a); }
+  if (act === 'del') {
+    if (b.dataset.armed) { if (selected === a.id) selected = null; ANN = ANN.filter(x => x.id !== a.id); setStatus('Commentaire supprimé.'); return persist(); }
+    b.dataset.armed = '1'; b.textContent = 'Confirmer la suppression'; b.classList.add('danger');
+    setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Supprimer'; b.classList.remove('danger'); } }, 4000);
+  }
+});
+function selectAnn(id) {
+  selected = id; renderOverlay(); renderNotes();
+  const li = document.querySelector(`.note[data-id="${CSS.escape(id)}"]`); if (li) li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function goTo(a) {
+  return new Promise(res => {
+    const reveal = () => {
+      selected = a.id; renderOverlay(); renderNotes();
+      const s = sheetOf(a.page); if (!s) return res();
+      const [x, y] = anchorOf(a, s), z = zoomVal(), st = $('stage');
+      st.scrollTo({ left: Math.max(0, x * z - st.clientWidth / 2), top: Math.max(0, y * z - st.clientHeight / 2), behavior: 'smooth' });
+      res();
+    };
+    if (sheetOf(a.page)) return reveal();
+    showCard(a.card);   // la carte n'est pas affichée : on l'ouvre puis on montre l'annotation
+    const t = setInterval(() => { if (sheetOf(a.page)) { clearInterval(t); reveal(); } }, 200);
+    setTimeout(() => { clearInterval(t); res(); }, 20000);
+  });
+}
+
+/* Envoi : les brouillons partent dans le champ caché « retours » du formulaire Tally, encodés en base64url
+   (« FX1. » + JSON { v, l: lot, p: partie, n: nb de parties, s: source, a: [[carte, page, type, géométrie, texte, couleur]] }).
+   Un lien trop long est découpé en plusieurs envois. */
+const MAXLEN = 5500;
+const b64u = s => { const bytes = new TextEncoder().encode(s); let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const T = { note: 'n', cercle: 'c', fleche: 'f', crayon: 'd' };
+function packOne(a) {
+  const g = a.geo || {};
+  const geo = a.type === 'note' ? [g.x, g.y] : a.type === 'crayon' ? (g.pts || []).flat() : [g.x1, g.y1, g.x2, g.y2];
+  return [a.card, +String(a.page).slice(-2), T[a.type] || 'n', geo.map(r3), a.text || '', Math.max(0, COLORS.findIndex(c => c[0] === a.color))];
+}
+const payloadOf = (lot, p, n, items) => 'FX1.' + b64u(JSON.stringify({ v: 1, l: lot, p, n, s: CONF.source, c: CODE || '', a: items.map(packOne) }));
+let sendState = null;   // { lot, ids: [[ids de la partie 1], …] } : les liens restent stables tant que les brouillons ne changent pas
+function renderSend() {
+  const box = $('send'); box.innerHTML = '';
+  const drafts = ANN.filter(a => a.status !== 'envoye' && a.text);
+  const missing = ANN.filter(a => a.status !== 'envoye' && !a.text).length;
+  if (!drafts.length) {
+    const s = document.createElement('span'); s.className = 'btn primary'; s.setAttribute('aria-disabled', 'true'); s.textContent = 'Envoyer mes retours';
+    box.appendChild(s);
+    $('sendHelp').textContent = ANN.length ? 'Tous vos commentaires sont envoyés. Merci ! Vous pouvez en ajouter d’autres.' : 'Vos commentaires restent dans ce navigateur jusqu’à l’envoi.';
+    return;
+  }
+  const key = drafts.map(a => a.id + ':' + a.text.length + ':' + (a.color || '')).join('|');
+  if (!sendState || sendState.key !== key) sendState = { key, lot: Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36) };
+  // découpage : parties successives dont le lien reste assez court pour le formulaire
+  const groups = [[]];
+  drafts.forEach(a => {
+    const cur = groups[groups.length - 1];
+    if (cur.length && payloadOf(sendState.lot, 99, 99, cur.concat([a])).length > MAXLEN) groups.push([]);
+    groups[groups.length - 1].push(a);
+  });
+  groups.forEach((g, i) => {
+    const payload = payloadOf(sendState.lot, i + 1, groups.length, g);
+    const link = document.createElement('a');
+    link.className = 'btn primary'; link.target = '_blank'; link.rel = 'noopener';
+    link.href = `${TALLY}?retours=${payload}&nb=${g.length}&envoi=${i + 1}%2F${groups.length}&source=${encodeURIComponent(CONF.source)}${CODE ? '&code=' + encodeURIComponent(CODE) : ''}`;
+    link.textContent = groups.length > 1 ? `Envoyer mes retours (partie ${i + 1} sur ${groups.length}, ${g.length} commentaire${g.length > 1 ? 's' : ''})` : `Envoyer mes retours (${g.length} commentaire${g.length > 1 ? 's' : ''})`;
+    link.addEventListener('click', () => {
+      setTimeout(() => {   // laisser le lien s'ouvrir, puis marquer ces commentaires comme envoyés
+        const now = new Date().toISOString();
+        g.forEach(a => { const x = ANN.find(y => y.id === a.id); if (x) { x.status = 'envoye'; x.sentAt = now; } });
+        setStatus('Le formulaire s’est ouvert dans un nouvel onglet : indiquez votre prénom et cliquez sur « Envoyer mes retours » pour terminer.');
+        persist();
+      }, 300);
+    });
+    box.appendChild(link);
+  });
+  $('sendHelp').textContent = (missing ? `${missing} annotation${missing > 1 ? 's' : ''} sans commentaire ne partira pas : complétez-la. ` : '') + 'Le formulaire s’ouvre dans un nouvel onglet ; validez-le pour que vos retours nous parviennent.';
+}
+
+// Outils et couleurs
+function setTool(t) {
+  tool = t || null;
+  document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
+  if (!tool && drawing && drawing.live) drawing = null;
+  renderOverlay();
+}
+document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(tool === b.dataset.tool ? null : b.dataset.tool)));
+$('swatches').innerHTML = COLORS.map(([c, n]) => `<button type="button" data-c="${c}" style="background:${c};--c:${c}" aria-pressed="${c === color}" aria-label="Couleur ${n}" title="${n}"></button>`).join('');
+$('swatches').addEventListener('click', e => {
+  const b = e.target.closest('[data-c]'); if (!b) return;
+  color = b.dataset.c;
+  $('swatches').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderOverlay();
+});
+document.querySelector('.filter').addEventListener('click', e => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll('.filter button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderOverlay(); renderNotes();
+});
+$('toggleNotes').addEventListener('click', () => {
+  const closed = $('workspace').classList.toggle('closed');
+  $('toggleNotes').setAttribute('aria-pressed', String(!closed));
+});
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,select,[contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'escape') { closeComposer(); drawing = null; setTool(null); return; }
+  const t = { n: 'note', e: 'cercle', f: 'fleche', d: 'crayon' }[k];
+  if (t) { e.preventDefault(); setTool(tool === t ? null : t); }
+});
+
+// Démarrage
+document.title = CONF.titre; $('h1').textContent = CONF.titre;
+if (CONF.decks.length < 2) $('tabs').hidden = true;
+if (CONF.beta && lsGet('fichly-bienvenue-vue') !== '1') $('welcome').hidden = false;
+$('welcomeClose').addEventListener('click', () => { $('welcome').hidden = true; lsSet('fichly-bienvenue-vue', '1'); });
+/* =========================================================
+   Bêta hébergée : inscription, code personnel et commentaires dans Supabase.
+   Toutes les lectures et écritures passent par des fonctions qui exigent le code du testeur.
+   Une copie locale (par code) garde les commentaires en attente si la connexion tombe.
+   ========================================================= */
+async function rpc(fn, args) {
+  const r = await fetch(SB.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { apikey: SB.key, 'Content-Type': 'application/json' }, body: JSON.stringify(args) });
+  const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+  if (!r.ok) { const e = new Error((j && j.message) || ('HTTP ' + r.status)); e.code = (j && j.message) || 'http_' + r.status; throw e; }
+  return j;
+}
+const SYNCED = {};    // id -> signature du dernier état enregistré
+let PENDING_DEL = new Set(), syncing = false, syncErr = '';
+const sigOf = a => JSON.stringify([a.card, a.page, a.type, a.geo, a.text, a.color]);
+function syncState(a) { return SYNCED[a.id] === sigOf(a) ? 'ok' : (syncErr ? 'ko' : 'wait'); }
+function load() {   // copie locale : commentaires pas encore confirmés par le serveur
+  try { const v = JSON.parse(lsGet(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function persist() {
+  lsSet(KEY, JSON.stringify(ANN));
+  ANN.forEach(a => { a.status = 'brouillon'; });
+  renderList(); renderOverlay(); renderNotes(); renderSend();
+  syncNow();
+}
+async function syncNow() {
+  if (syncing || !CODE) return;
+  syncing = true;
+  try {
+    const known = new Set(ANN.map(a => a.id));
+    Object.keys(SYNCED).forEach(id => { if (!known.has(id)) PENDING_DEL.add(id); });
+    for (const id of [...PENDING_DEL]) { await rpc('supprimer', { p_code: CODE, p_id: id }); delete SYNCED[id]; PENDING_DEL.delete(id); }
+    for (const a of ANN.slice()) {
+      const sig = sigOf(a);
+      if (SYNCED[a.id] === sig || !a.text) continue;
+      await rpc('enregistrer', { p_code: CODE, p_id: a.id, p_card: a.card, p_page: +String(a.page).slice(-2), p_type: a.type, p_geo: a.geo, p_texte: a.text, p_couleur: a.color || COLORS[0][0] });
+      SYNCED[a.id] = sig;
+    }
+    syncErr = '';
+  } catch (e) {
+    syncErr = e.code === 'code_inconnu' ? 'Votre code n’est plus reconnu : reconnectez-vous.' : e.code === 'trop_de_commentaires' ? 'Limite de 500 commentaires atteinte.' : 'Connexion impossible : vos commentaires sont gardés sur cet appareil et seront enregistrés dès le retour de la connexion.';
+  }
+  syncing = false;
+  renderNotes(); renderSend();
+  if (!syncErr && ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a))) syncNow();   // une modification arrivée pendant l'envoi
+}
+setInterval(() => { if (syncErr) syncNow(); }, 20000);
+window.addEventListener('online', () => syncNow());
+window.addEventListener('beforeunload', e => { if (ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a)) || PENDING_DEL.size) { e.preventDefault(); e.returnValue = ''; } });
+function renderSend() {
+  const box = $('sync'); if (!box) return;
+  const waiting = ANN.filter(a => a.text && SYNCED[a.id] !== sigOf(a)).length + PENDING_DEL.size;
+  box.className = 'sync' + (syncErr ? ' ko' : waiting ? ' wait' : '');
+  box.textContent = syncErr ? syncErr : waiting ? `Enregistrement de ${waiting} commentaire${waiting > 1 ? 's' : ''}…` : (ANN.length ? `✓ ${ANN.length} commentaire${ANN.length > 1 ? 's' : ''} enregistré${ANN.length > 1 ? 's' : ''}` : '✓ Enregistrement automatique');
+}
+async function enter(code, prenom) {
+  CODE = code; KEY = 'fichly-beta-aic-' + code;
+  lsSet('fichly-code', code);
+  $('whoCode').textContent = code; $('hello').textContent = prenom ? `Bonjour ${prenom}` : ''; $('who').hidden = false;
+  $('gate').hidden = true;
+  setStatus('Chargement de vos cartes et de vos commentaires…');
+  try {
+    const [cartes, mine] = await Promise.all([rpc('cartes_aic', { p_code: code }), rpc('mes_commentaires', { p_code: code })]);
+    window.__CARTES = cartes || {};
+    Object.keys(REG).forEach(id => { ready[id] = !!window.__CARTES[id]; });
+    const server = ((mine && mine.commentaires) || []).map(c => ({ id: c.id, deck: 'aic', card: c.card, page: `${c.card}-${String(c.page).padStart(2, '0')}`, type: c.type, geo: c.geo, text: c.texte, color: c.couleur, status: 'brouillon', createdAt: c.created_at }));
+    server.forEach(a => { SYNCED[a.id] = sigOf(a); });
+    const local = load().filter(a => a.text && !server.some(x => x.id === a.id));   // en attente sur cet appareil
+    ANN = server.concat(local);
+    $('avisText').value = (mine && mine.avis) || '';
+    setStatus('');
+  } catch (e) {
+    if (e.code === 'code_inconnu') { logout(); return askCode('Ce code n’est pas reconnu. Vérifiez-le, ou inscrivez-vous.'); }
+    ANN = load(); syncErr = 'Connexion impossible pour le moment. Réessayez dans un instant.';
+  }
+  renderList(); renderNotes(); renderSend();
+  if (ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a))) syncNow();
+  showCard(ids(deck)[0]);
+}
+function logout() {
+  closeComposer(); drawing = null; setTool(null);
+  CODE = null; lsSet('fichly-code', ''); $('who').hidden = true;
+  ANN = []; Object.keys(SYNCED).forEach(k => delete SYNCED[k]); PENDING_DEL = new Set(); window.__CARTES = {};
+  $('stage').innerHTML = '<div class="empty">Connectez-vous avec votre code pour voir les cartes.</div>'; frame = null; overlay = null;
+  renderList(); renderNotes(); renderSend();
+}
+let gmode = 'inscr';
+function gateMode(m) {
+  gmode = m;
+  document.querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === m)));
+  $('gInscr').hidden = m !== 'inscr'; $('gCode').hidden = m !== 'code'; $('gDone').hidden = m !== 'done';
+  document.querySelector('#gate .tabs2').hidden = m === 'done';
+  $('gateGo').textContent = m === 'inscr' ? 'M’inscrire et recevoir mon code' : 'Accéder aux cartes';
+  $('gateErr').textContent = '';
+}
+function askCode(msg) { $('gate').hidden = false; gateMode(msg ? 'code' : 'inscr'); $('gateErr').textContent = msg || ''; }
+document.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => gateMode(b.dataset.g)));
+let doneInfo = null;
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const go = $('gateGo'), err = $('gateErr');
+  if (gmode === 'done') return enter(doneInfo.code, doneInfo.prenom);
+  go.disabled = true; err.textContent = '';
+  try {
+    if (gmode === 'code') {
+      const v = normCode($('codeInput').value);
+      if (!CODE_RE.test(v)) { err.textContent = 'Un code personnel compte 8 lettres ou chiffres. Recopiez-le tel qu’il vous a été donné.'; return; }
+      const t = await rpc('connexion', { p_code: v });
+      if (!t) { err.textContent = 'Ce code n’est pas reconnu. Vérifiez-le, ou inscrivez-vous avec l’onglet « Première visite ».'; return; }
+      return enter(t.code, t.prenom);
+    }
+    const P = { p_prenom: $('fPrenom').value.trim(), p_nom: $('fNom').value.trim(), p_email: $('fEmail').value.trim(), p_fonction: $('fFonction').value.trim(), p_accord: $('fAccord').checked };
+    if (!P.p_prenom || !P.p_nom) { err.textContent = 'Indiquez votre prénom et votre nom.'; return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(P.p_email)) { err.textContent = 'Indiquez une adresse e-mail valide.'; return; }
+    if (!P.p_accord) { err.textContent = 'Cochez la case d’accord pour participer à la bêta.'; return; }
+    const code = await rpc('inscrire', P);
+    doneInfo = { code, prenom: P.p_prenom };
+    lsSet('fichly-code', code);
+    $('doneName').textContent = P.p_prenom; $('doneCode').textContent = code;
+    gateMode('done');
+  } catch (ex) {
+    err.textContent = ex.code === 'deja_inscrit' ? 'Cette adresse e-mail est déjà inscrite : utilisez votre code (onglet « J’ai mon code »). Code perdu ? Écrivez à contact@fichly.com.'
+      : ex.code === 'complet' ? 'La bêta est complète. Merci de votre intérêt !'
+      : 'Connexion impossible pour le moment. Vérifiez votre connexion Internet et réessayez.';
+  } finally { go.disabled = false; }
+});
+$('doneCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(doneInfo.code); $('doneCopy').textContent = 'Code copié'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('doneCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+});
+$('logout').addEventListener('click', () => { logout(); askCode(); });
+$('avisSave').addEventListener('click', async () => {
+  const b = $('avisSave'); b.disabled = true;
+  try { await rpc('enregistrer_avis', { p_code: CODE, p_texte: $('avisText').value }); $('avisInfo').textContent = '✓ Enregistré'; }
+  catch (e) { $('avisInfo').textContent = 'Non enregistré : réessayez.'; }
+  b.disabled = false;
+});
+document.title = 'Bêta · Mini-deck AIC et Obeya · Fichly';
+$('tabs').hidden = true;
+if (lsGet('fichly-bienvenue-vue') !== '1') $('welcome').hidden = false;
+renderSend();
+{ const saved = normCode(lsGet('fichly-code')); if (CODE_RE.test(saved)) { rpc('connexion', { p_code: saved }).then(t => t ? enter(t.code, t.prenom) : askCode()).catch(() => enter(saved, '')); } else askCode(); }
+</script>
+</body>
+</html>

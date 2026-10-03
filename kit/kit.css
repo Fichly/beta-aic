@@ -1,0 +1,342 @@
+/* Format A5 (148 x 210 mm) par défaut.
+   Format A6 (105 x 148 mm) : la page est composée sur 120,7 x 170,1 mm puis réduite à 87 %,
+   pour garder un corps de texte d'environ 7,6 pt. Le contenu A6 est une version resserrée. */
+:root{
+  --ink:#071246; --blue:#3d449b; --navy:#071246; --muted:#4b5280;
+  --paper:#f6efdc; --card:#ffffff; --line:#d9cfb5; --tint:8%;
+  --red:#f16969; --pRed:#fde4e1; --tRed:#9e2f2f;
+  --green:#8cc978; --pGreen:#e6f3de; --tGreen:#2c5520;
+  --swash:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'><path d='M2 6.2 C18 3.6 34 6.8 52 4.8 S84 4.6 98 4.2' stroke='black' stroke-width='3.4' fill='none' stroke-linecap='round'/></svg>");
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#cfcabd;font-family:'Poppins',sans-serif;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:8.7pt;line-height:1.4}
+@media screen{body{padding:8mm 0}}
+@media print{body{background:none;padding:0}.sheet{margin:0!important}}
+
+.sheet{width:148mm;height:210mm;overflow:hidden;margin:0 auto 8mm;break-after:page;page-break-after:always;position:relative}
+.page,.sheet{--bg:color-mix(in srgb, var(--fam) var(--tint), #ffffff);--line:color-mix(in srgb, var(--fam) 32%, #c9cad6)}
+.page{width:148mm;height:210mm;position:relative;overflow:hidden;background:var(--bg);transform-origin:0 0}
+.page::after{content:'';position:absolute;inset:0;background:url(../assets/paper.png) center/cover;mix-blend-mode:multiply;filter:grayscale(1) brightness(1.06);opacity:.28;pointer-events:none;z-index:50}
+body.papier .page,body.papier .sheet{--bg:var(--paper);--line:#d9cfb5}
+body.papier .page::after{filter:none;opacity:.5}
+b,strong{font-weight:700}
+sup{font-size:.62em;line-height:0;vertical-align:.55em}
+p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+
+/* ---------- bandeau ---------- */
+.band{position:absolute;left:0;top:0;width:100%;background:var(--fam)}
+.band-r{height:43mm}
+.band-v{height:27mm}
+.logo{position:absolute;left:8mm;top:5.2mm;width:19mm}
+.logo img{width:100%;display:block}
+.logo span{position:absolute;left:.2mm;top:75%;font:500 4.6pt 'Poppins';color:var(--ink);white-space:nowrap;letter-spacing:.01em;transform-origin:0 0}
+.eyebrow{position:absolute;left:30.5mm;top:7.6mm;display:flex;align-items:center;gap:1.8mm;font:600 8.2pt/1 'Poppins';letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border-left:.35mm solid var(--ink);padding:.9mm 0 .9mm 2.4mm}
+.eyebrow b{font-weight:800;letter-spacing:.02em}
+.titlebox{position:absolute;margin:0;display:inline-block;color:#fff;font:800 25pt/1 'Poppins';letter-spacing:-.01em;border:3.4mm solid transparent;background:url(../assets/titlebox.png) 0 0/100% 100% no-repeat border-box;padding:.25mm 1.6mm .55mm;white-space:nowrap}
+.band-r .titlebox{left:7.4mm;top:15.6mm}
+.band-v .titlebox{left:7.4mm;top:15.2mm;font-size:16pt;border-width:2.4mm;border-image-width:2.4mm;padding:.1mm 1.2mm .35mm}
+.subrow{position:absolute;display:flex;align-items:center;gap:3mm}
+.band-r .subrow{left:8mm;top:34mm}
+.band-v .subrow{right:8mm;top:15.6mm}
+.sub{font:600 9.6pt/1.15 'Poppins';color:var(--ink)}
+.band-v .vsub{position:absolute;top:16.9mm;font:600 9.4pt/1.15 'Poppins';color:var(--ink);white-space:nowrap}
+.belt{display:inline-flex;align-items:center;gap:1.5mm;background:#ffffff;border:0;border-radius:999px;padding:1.1mm 3mm 1.1mm 2.2mm;white-space:nowrap}
+.belt svg{width:7.4mm;height:4.2mm;display:block}
+.belt small{font:800 6.2pt/1 'Poppins';letter-spacing:.14em;color:var(--blue)}
+.belt span{font:700 8.4pt/1 'Poppins';letter-spacing:0;color:var(--ink)}
+.qr{position:absolute;right:7mm;top:3.8mm;width:40mm;text-align:right}
+.qr .card{width:20.4mm;height:20.4mm;margin:0 0 0 auto;background:#fff;border-radius:2.6mm;padding:1.7mm}
+.qr .card svg{width:100%;height:100%;display:block}
+.qr .cap{display:inline-block;position:relative;margin-top:1mm;font:700 12pt/1 'Caveat';color:var(--ink);white-space:nowrap}
+.qr .cap::before{content:'';position:absolute;left:-3mm;top:-4.4mm;width:2.4mm;height:7.4mm;background:url(../assets/arrowSmall.png) center/contain no-repeat}
+.qr .url{margin-top:.8mm;font:600 6.6pt/1 'Poppins';color:var(--ink);white-space:nowrap}
+
+/* ---------- zone de contenu ---------- */
+.content{position:absolute;left:8mm;right:8mm;bottom:17.4mm;display:flex;flex-direction:column;justify-content:space-between}
+.recto .content{top:45.4mm}
+.verso .content{top:29.6mm}
+
+h2{margin:0 0 1.1mm;font:700 10.4pt/1.15 'Poppins';letter-spacing:0;color:var(--navy);display:inline-block;position:relative;padding-bottom:1.2mm}
+h2::after{content:'';position:absolute;left:-.4mm;right:-.6mm;bottom:0;height:1.4mm;background:var(--fam);-webkit-mask:var(--swash) 0 0/100% 100% no-repeat;mask:var(--swash) 0 0/100% 100% no-repeat}
+mark{background:linear-gradient(transparent 58%,var(--famH) 58%,var(--famH) 94%,transparent 94%);color:inherit;padding:0 .3mm;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.dot{display:inline-grid;place-items:center;position:relative;flex:none;color:var(--dotInk,var(--ink));font:800 7.4pt/1 'Poppins';z-index:0;font-variant-numeric:tabular-nums}
+.dot::before{content:'';position:absolute;inset:0;background:var(--c,var(--fam));border-radius:50%;z-index:-1}
+.ref{white-space:nowrap}
+.ref b{background:linear-gradient(transparent 62%,var(--rh) 62%,var(--rh) 96%,transparent 96%);padding:0 .2mm}
+.ref .dot{width:4mm;height:4mm;margin:-.9mm 0 -.9mm .7mm;vertical-align:middle;font-size:6.8pt}
+
+/* besoin */
+.need{margin:0;display:flex;gap:2.6mm;align-items:flex-start}
+.need .q{width:7.4mm;height:6mm;flex:none;margin-top:.4mm;background:var(--fam);-webkit-mask:var(--m-quote) center/contain no-repeat;mask:var(--m-quote) center/contain no-repeat}
+.need p{font:600 11.2pt/1.3 'Poppins';letter-spacing:0;color:var(--ink)}
+.need p em{font-style:normal;font-weight:700;color:var(--blue)}
+
+/* illustration principale */
+.hero{display:grid;grid-template-columns:68mm 1fr;gap:4mm;align-items:center}
+.hero figure{margin:0}
+.hero svg{display:block;width:100%;height:auto}
+.hero figcaption{font:700 11.6pt/1.1 'Caveat';color:var(--blue);margin-top:.4mm;text-align:center}
+.principle h3{margin:0 0 1.5mm;font:700 9.2pt/1.2 'Poppins';color:var(--ink)}
+.principle li{display:flex;gap:2mm;align-items:flex-start;margin-bottom:1.6mm;font-size:8.5pt;line-height:1.34}
+.principle li:last-child{margin-bottom:0}
+.principle .dot{width:5mm;height:5mm;font-size:7.8pt;margin-top:.1mm}
+.principle li b{font:700 8.9pt/1.2 'Poppins';color:var(--navy)}
+
+/* en pratique */
+.practice{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:.3mm solid var(--line);border-radius:2.6mm;padding:1.7mm .8mm}
+.practice > div{display:flex;gap:1.3mm;align-items:center;padding:0 1.3mm;border-left:.3mm dashed var(--line)}
+.practice > div:first-child{border-left:0}
+.practice svg{width:4.6mm;height:4.6mm;flex:none}
+.practice small{display:block;font:600 7.2pt/1.2 'Poppins';color:var(--muted);letter-spacing:.02em}
+.practice span{display:block;font:600 7.9pt/1.25 'Poppins';color:var(--ink);white-space:nowrap}
+
+/* colonnes */
+.cols{display:grid;grid-template-columns:72mm 1fr;gap:5mm;align-items:start}
+.cols p,.exrow p{font-size:8.7pt;line-height:1.4}
+.checks li{display:flex;gap:1.8mm;align-items:flex-start;margin-bottom:1.1mm;font-size:8.5pt;line-height:1.34}
+.checks li:last-child{margin-bottom:0}
+.ic{width:4.3mm;height:4.3mm;flex:none;margin-top:.1mm;display:grid;place-items:center;position:relative;z-index:0}
+.ic::before{content:'';position:absolute;inset:0;background:var(--c);border-radius:50%;z-index:-1}
+.ic svg{width:2.7mm;height:2.7mm}
+.ic.yes{--c:var(--fam)}
+.ic.no{--c:var(--red)}
+.ic.ok{--c:var(--green)}
+.checks li.no{background:var(--pRed);border-radius:1.6mm;padding:.8mm 1.4mm;margin-top:1.4mm;margin-left:-1.4mm;margin-right:-1.4mm}
+.checks li.no b{color:var(--tRed)}
+
+/* parcours */
+.path{display:grid;grid-template-columns:auto 1fr;column-gap:4mm;align-items:center}
+.path h2{margin:0}
+.path .where{display:block;font:700 10.4pt/1 'Caveat';color:var(--blue);margin-top:.6mm;white-space:nowrap}
+.path ol{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between}
+.path li{display:flex;gap:1.4mm;align-items:center;padding:1mm 2mm 1mm 1.2mm;border-radius:2mm;border:.3mm dashed #b9ae92;position:relative;background:transparent}
+.path li + li::before{content:'';position:absolute;left:-3.3mm;top:50%;width:2.2mm;height:2.2mm;margin-top:-1.1mm;background:var(--ink);-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M3 1.5 7 5 3 8.5' stroke='black' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/contain no-repeat}
+.path li .dot{width:4.6mm;height:4.6mm;font-size:6.8pt;margin-top:.1mm}
+.path li b{font:600 8.4pt/1.15 'Poppins';color:var(--ink);display:block;white-space:nowrap}
+.path li em{display:block;font-style:normal;font-size:7.6pt;line-height:1.2;color:var(--muted)}
+.path li.here{background:var(--famP);border:.4mm solid var(--fam)}
+.path li.here b{font-weight:700}
+
+/* verso : étapes */
+.vhead{display:flex;align-items:baseline;justify-content:space-between;gap:3mm}
+.vhead h2{margin-bottom:0}
+.vhead .tag{font:700 11pt/1 'Caveat';color:var(--blue);white-space:nowrap}
+.step{display:grid;grid-template-columns:29mm 1fr;gap:3.4mm;position:relative}
+.step.noill{grid-template-columns:6mm 1fr;gap:3mm}
+.verso .content{justify-content:flex-start;gap:3mm}
+.steps{flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.steps hr{border:0;border-top:.3mm dashed var(--line);margin:0;width:100%}
+.step .lft{position:relative;padding:.6mm 0 0 5.4mm}
+.step .lft > .dot{position:absolute;left:-.6mm;top:-.4mm;width:6.6mm;height:6.6mm;font:700 9.6pt/1 'Poppins';z-index:2}
+.step .lft svg{display:block;width:23.4mm;height:auto}
+.step .nm{margin:0 0 .5mm;font:700 10.2pt/1.15 'Poppins';letter-spacing:0;color:var(--navy)}
+.step .nm small{font:500 7.9pt/1.15 'Poppins';color:var(--muted);margin-left:1.2mm}
+.step .rgt p{font-size:8.7pt;line-height:1.38}
+.ex{margin-top:1.2mm;background:var(--famP);border-radius:2.6mm;padding:1.2mm 2.6mm 1.3mm;font-size:8.2pt;line-height:1.36}
+.tagx{display:inline-block;font:800 6.4pt/1.3 'Poppins';letter-spacing:.1em;text-transform:uppercase;color:var(--famI);background:var(--fam);border-radius:999px;padding:.2mm 1.6mm;margin-right:1.2mm;vertical-align:.2mm}
+.ex .vs{display:grid;grid-template-columns:auto 1fr;column-gap:1.6mm;row-gap:.5mm;align-items:start;margin-top:.4mm}
+.ex .vs .ic{width:3.8mm;height:3.8mm;margin-top:.1mm}
+.ex .vs .ic svg{width:2.3mm;height:2.3mm}
+.chain{display:grid;grid-template-columns:auto 1fr;column-gap:1.8mm;row-gap:.3mm;align-items:center;margin-top:.5mm}
+.chain .dot{width:4.2mm;height:4.2mm;font-size:6.6pt;--c:#ffffff}
+.chain .dot::before{box-shadow:inset 0 0 0 .25mm var(--line)}
+.chain .root{background:var(--pRed);border-radius:1.2mm;padding:.3mm 1.2mm;margin-left:-1.2mm}
+.chain .root b{color:var(--tRed)}
+.tbl{display:grid;grid-template-columns:1fr auto auto;column-gap:4mm;row-gap:.1mm;margin-top:.5mm}
+.tbl span{white-space:nowrap}
+.tbl .h{font:600 6.9pt/1.35 'Poppins';color:var(--famI);letter-spacing:.04em;text-transform:uppercase}
+.tbl .n{text-align:right;font-variant-numeric:tabular-nums}
+
+/* pièges / réflexes */
+.retenir{border:0;border-radius:4mm;padding:3mm 4mm 3.2mm;background:#ffffff;color:var(--ink)}
+.retenir .rt{display:flex;gap:2.6mm;align-items:center}
+.retenir small{flex:none;font:800 6.6pt/1.2 'Poppins';letter-spacing:.14em;text-transform:uppercase;color:var(--famI);background:var(--fam);border-radius:999px;padding:1mm 2.2mm}
+.retenir .rt p{font:700 10.8pt/1.32 'Poppins';letter-spacing:0;color:var(--navy);text-wrap:balance}
+.retenir mark{background:none;color:inherit;position:relative;padding:0}
+.retenir mark::after{content:'';position:absolute;left:-.3mm;right:-.3mm;bottom:-1.1mm;height:1.5mm;background:var(--fam);-webkit-mask:var(--swash) 0 0/100% 100% no-repeat;mask:var(--swash) 0 0/100% 100% no-repeat}
+.retenir ul{margin-top:2.4mm;padding-top:2.2mm;border-top:.3mm dashed var(--line);display:grid;row-gap:1mm}
+.retenir li{position:relative;padding-left:3.6mm;font-size:8.8pt;line-height:1.38;text-wrap:pretty;color:var(--ink)}
+.retenir li::before{content:'';position:absolute;left:.5mm;top:1.5mm;width:1.5mm;height:1.5mm;border-radius:50%;background:var(--fam)}
+
+/* ---------- pied de page ---------- */
+.foot{position:absolute;left:8mm;right:8mm;bottom:9.4mm;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;column-gap:2.4mm;font:700 7.8pt/1 'Poppins';color:var(--navy)}
+.foot .l,.foot .r{display:flex;align-items:center;gap:2.4mm;white-space:nowrap}
+.foot .l::after,.foot .r::before{content:'';flex:1;border-top:.3mm solid var(--navy);opacity:.8}
+.foot .r{justify-content:flex-end}
+.foot .dot{width:6.4mm;height:6.4mm;font-size:8.6pt}
+.copy{position:absolute;left:0;right:0;bottom:6mm;text-align:center;font:500 6.6pt/1 'Poppins';color:var(--muted)}
+.strip{position:absolute;left:0;right:0;bottom:0;height:4.2mm;display:grid;grid-template-columns:repeat(6,1fr);align-items:end;z-index:60}
+.strip i{height:2.8mm;display:block}
+.strip i.on{height:4.2mm;border-radius:1.4mm 1.4mm 0 0}
+
+/* ---------- recto épuré (v2) ---------- */
+.v2 .qr .cap::before{display:none}
+.v2 .chart{margin:0}
+.v2 .chart svg{display:block;width:100%;height:auto}
+.v2 .cols2{display:grid;grid-template-columns:1fr 50mm;column-gap:7mm;align-items:start}
+.v2 .cols2 section + section{margin-top:3.8mm}
+.v2 .cols2 p{font-size:9pt;line-height:1.45}
+.v2 .when2 li{display:grid;grid-template-columns:3.2mm 1fr;column-gap:1.8mm;font-size:8.8pt;line-height:1.4;margin-bottom:1.3mm}
+.v2 .when2 li:last-child{margin-bottom:0}
+.v2 .when2 li svg{width:3.2mm;height:3.2mm;margin-top:.5mm}
+.v2 .when2 li.n b{color:var(--tRed)}
+.v2 .meta{display:grid;grid-template-columns:auto 1fr;column-gap:3mm;row-gap:.6mm;margin:0;font-size:8.8pt;line-height:1.35}
+.v2 .meta dt{font:600 7.8pt/1.55 'Poppins';color:var(--muted)}
+.v2 .meta dd{margin:0}
+.v2 .trail{display:flex;align-items:center;flex-wrap:wrap;gap:1.4mm 2.4mm;font-size:8.8pt;border-top:.3mm solid var(--line);padding-top:2.6mm}
+.v2 .trail > b{font:700 9.4pt/1 'Poppins';color:var(--navy);margin-right:1.2mm}
+.v2 .trail i{font-style:normal;color:var(--muted);font-size:10pt}
+.v2 .trail .cur{background:var(--famP);border:.35mm solid var(--fam);border-radius:1.4mm;padding:.5mm 1.8mm}
+.v2 .ref b{background:none}
+
+/* ---------- v3 : bandeau épuré, visuel pièce maîtresse ---------- */
+.band-l{position:absolute;left:0;top:0;width:100%;height:15mm;background:var(--fam)}
+.band-l .logo{top:2.8mm}
+.band-l .titlebox{left:8mm;top:19.4mm;background:none;border:0;padding:0 0 2.6mm;color:var(--navy);font-size:28pt;font-weight:800;letter-spacing:-.02em}
+.band-l .titlebox::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.4mm;background:var(--fam);-webkit-mask:var(--swash) 0 0/100% 100% no-repeat;mask:var(--swash) 0 0/100% 100% no-repeat}
+.band-l .eyebrow{top:4.6mm;left:30.6mm;gap:1.8mm;text-transform:uppercase;letter-spacing:.12em;font:800 7.4pt/1 'Poppins';color:var(--bandInk,var(--ink));border-left-color:var(--bandInk,var(--ink))}
+.band-l .eyebrow b{font-weight:800;letter-spacing:.06em}
+.band-l .side{position:absolute;right:8mm;top:50%;transform:translateY(-50%)}
+.band-l .belt{background:none;border:0;padding:0;gap:0;position:relative}
+.band-l .belt svg{width:8.4mm;height:4.8mm}
+.band-l .belt small{display:none}
+.band-l .belt span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.verso .band-l .side{top:18.4mm;transform:none}
+.band-l .qrl{display:grid;grid-template-columns:auto 15mm;grid-template-rows:1fr auto;column-gap:2.4mm;row-gap:.8mm}
+.band-l .qrl .card{grid-column:2;grid-row:1 / 3;width:15mm;height:15mm;background:#fff;border-radius:2mm;padding:1.2mm;outline:.3mm solid var(--line)}
+.band-l .qrl .card svg{width:100%;height:100%;display:block}
+.band-l .qrl .cap{grid-column:1;grid-row:1;align-self:end;font:700 12pt/1.02 'Caveat';color:var(--ink);text-align:right}
+.band-l .qrl .url{grid-column:1;grid-row:2;justify-self:end;font:600 6.6pt/1 'Poppins';color:var(--ink);white-space:nowrap}
+.lean .content{top:35.6mm}
+.v3.recto .content{justify-content:flex-start;gap:4.4mm}
+.v3 .visual{margin:0;flex:1;min-height:0;display:flex;align-items:center}
+.v3 .visual .ill{width:100%}
+.v3 .visual svg{display:block;width:100%;height:auto}
+.v3 .expl p{font-size:9pt;line-height:1.45}
+.v3 .expl p + p{margin-top:1.5mm}
+.v3 .links{display:grid;grid-template-columns:auto 1fr;column-gap:6mm;align-items:start;border-top:.3mm solid var(--line);padding-top:2.6mm}
+.v3 .links > b{font:700 9.6pt/1.25 'Poppins';letter-spacing:0;color:var(--navy);padding-top:.2mm}
+.v3 .links ul{display:grid;grid-template-columns:1fr 1fr;column-gap:5mm}
+.v3 .links li small{display:block;font:800 6.8pt/1.3 'Poppins';letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.v3 .links li .ref{display:inline-block;margin:.5mm 0 .3mm}
+.v3 .links li .ref b{font:700 9.4pt/1.2 'Poppins';color:var(--ink)}
+.v3 .links li > span:last-child{display:block;font-size:8.6pt;line-height:1.3;color:var(--ink)}
+
+/* ---------- bandeau colorié à la main : ?band=main ---------- */
+body.bandmain .band-l{background:none}
+.band-ink{position:absolute;left:0;top:0;width:100%;overflow:visible;pointer-events:none}
+
+/* ---------- fond perdu : ?bleed=1 ajoute 3 mm imprimés autour du format fini ---------- */
+body.bleed{--bl:3mm}
+body.bleed.a6{--bl:calc(3mm / var(--s))}
+body.bleed .sheet{width:154mm;height:216mm;background:var(--bg)}
+body.bleed.a6 .sheet{width:111mm;height:154mm}
+body.bleed .page{position:relative;left:3mm;top:3mm;overflow:visible}
+body.bleed .page::after{inset:calc(-1 * var(--bl))}
+body.bleed .band-l{top:calc(-1 * var(--bl));left:calc(-1 * var(--bl));width:calc(100% + 2 * var(--bl));height:calc(15mm + var(--bl));border:var(--bl) solid var(--fam);border-bottom:0}
+body.bleed.a6 .band-l{height:calc(13mm + var(--bl))}
+body.bleed .strip{left:calc(-1 * var(--bl));right:calc(-1 * var(--bl));bottom:calc(-1 * var(--bl));height:calc(4.2mm + var(--bl));border-left:var(--bl) solid #f16969;border-right:var(--bl) solid #74a3d6}
+body.bleed .strip i{height:calc(2.8mm + var(--bl))}
+body.bleed .strip i.on{height:calc(4.2mm + var(--bl))}
+
+/* ---------- A6 ---------- */
+body.a6{--s:.87}
+body.a6 .sheet{width:105mm;height:148mm}
+body.a6 .page{width:calc(105mm / var(--s));height:calc(148mm / var(--s));transform:scale(var(--s))}
+body.a6 .band-r{height:37.4mm}
+body.a6 .band-v{height:25mm}
+body.a6 .logo{left:7mm;top:4.4mm;width:16mm}
+body.a6 .logo span{font-size:4pt}
+body.a6 .eyebrow{left:26.4mm;top:5mm;display:block;line-height:1.25;font-size:7.8pt}
+body.a6 .eyebrow b{display:block}
+body.a6 .band-r .titlebox{left:6.4mm;top:15.2mm;font-size:21pt;border-width:2.8mm;border-image-width:2.8mm}
+body.a6 .band-r .subrow{left:7mm;top:30.4mm;gap:2.4mm}
+body.a6 .sub{font-size:9pt}
+body.a6 .qr{right:6mm;top:4mm;width:34mm}
+body.a6 .qr .card{width:17.6mm;height:17.6mm;padding:1.3mm;border-radius:2mm}
+body.a6 .qr .cap{font-size:11pt;margin-top:.6mm}
+body.a6 .qr .cap::before{top:-3.8mm;height:6mm}
+body.a6 .qr .url{font-size:6.6pt;margin-top:.5mm}
+body.a6 .band-v .titlebox{left:6.4mm;top:13mm;font-size:14pt;border-width:2.2mm;border-image-width:2.2mm}
+body.a6 .band-v .vsub{display:none}
+body.a6 .band-v .subrow{right:7mm;top:14.2mm}
+body.a6 .content{left:7mm;right:7mm;bottom:17mm}
+body.a6 .recto .content{top:39.6mm}
+body.a6 .verso .content{top:27.4mm}
+body.a6 .hero{grid-template-columns:56mm 1fr;gap:3mm}
+body.a6 .hero figcaption{display:none}
+body.a6 .principle li{margin-bottom:1.1mm}
+body.a6 .cols{grid-template-columns:55mm 1fr;gap:4mm}
+body.a6 .practice{grid-template-columns:1fr 1fr;row-gap:1.2mm;padding:1.4mm .6mm}
+body.a6 .practice > div{padding:0 1.6mm;gap:1.4mm}
+body.a6 .practice > div:nth-child(3){border-left:0}
+body.a6 .practice svg{width:4.2mm;height:4.2mm}
+body.a6 .practice p small,body.a6 .practice p span{display:inline}
+body.a6 .practice p small::after{content:' : '}
+body.a6 .path{grid-template-columns:1fr;row-gap:1.2mm}
+body.a6 .path > div{display:flex;align-items:baseline;gap:3mm}
+body.a6 .path .where{margin:0}
+body.a6 .step{grid-template-columns:6.4mm 1fr;gap:2.2mm}
+body.a6 .step .lft{padding:0}
+body.a6 .step .lft > .dot{position:relative;left:0;top:0;width:6.4mm;height:6.4mm}
+body.a6 .step .nm{margin-bottom:.2mm}
+body.a6 .step .lft svg{display:none}
+body.a6 .ex{padding:.8mm 1.8mm .9mm;margin-top:.9mm}
+body.a6 .tagx{font-size:7pt}
+body.a6 .tbl .h{font-size:7.2pt}
+body.a6 .foot{left:7mm;right:7mm;bottom:9mm;font-size:8.2pt}
+body.a6 .copy{font-size:7pt;bottom:5.4mm}
+body.a6 .band-l{height:13mm}
+body.a6 .band-l .logo{left:7mm;top:2.5mm;width:16mm}
+body.a6 .band-l .eyebrow{display:flex;left:25.8mm;top:3.7mm;font-size:8pt;line-height:1}
+body.a6 .band-l .eyebrow b{display:inline}
+body.a6 .band-l .titlebox{left:7mm;top:15.8mm;font-size:22pt;padding-bottom:2mm}
+body.a6 .verso .band-l .side{top:15.6mm;right:7mm}
+body.a6 .band-l .side{right:6mm}
+body.a6 .band-l .belt{gap:1.1mm;padding:.7mm 2mm .7mm 1.3mm}
+body.a6 .band-l .belt svg{width:6.2mm;height:3.6mm}
+body.a6 .band-l .belt small{font-size:6.8pt}
+body.a6 .band-l .belt span{font-size:8pt}
+body.a6 .band-l .qrl{grid-template-columns:auto 13mm;column-gap:1.8mm}
+body.a6 .band-l .qrl .card{width:13mm;height:13mm;padding:1mm;border-radius:1.8mm}
+body.a6 .band-l .qrl .cap{font-size:11pt}
+body.a6 .band-l .qrl .url{font-size:7.6pt}
+body.a6 .copy{bottom:5.8mm}
+body.a6 .ref .dot{font-size:7.2pt}
+body.a6 .lean .content{top:28.6mm}
+body.a6 .lean.verso .content{top:30.4mm}
+body.a6 .v2 .cols2{grid-template-columns:1fr 41mm;column-gap:5mm}
+body.a6 .v2 .cols2 section + section{margin-top:2.6mm}
+body.a6 .v2 .trail{gap:1mm 1.5mm;font-size:7.9pt;padding-top:2mm}
+body.a6 .v2 .trail > b{font-size:8.6pt;margin-right:.6mm}
+body.a6 .v2 .trail .cur{padding:.3mm 1.2mm}
+body.a6 .v3 .links{column-gap:4mm;padding-top:2mm}
+body.a6 .v3 .links ul{column-gap:3.5mm}
+
+/* ---------- pages libres (introduction, guide, sommaire, glossaire, tableaux) ---------- */
+.libre .content{justify-content:flex-start;gap:3.6mm}
+.libre .content > .grow{flex:1;min-height:0}
+.lib-lead{font:600 10.6pt/1.4 'Poppins';color:var(--ink)}
+.lib-lead em{font-style:normal;color:var(--blue);font-weight:700}
+.lib-p{font-size:8.9pt;line-height:1.45}
+.lib-grid{display:grid;gap:3mm}
+.lib-grid.c2{grid-template-columns:1fr 1fr}
+.lib-grid.c3{grid-template-columns:1fr 1fr 1fr}
+.lib-card{background:#ffffff;border-radius:3mm;padding:2.6mm 3.2mm 2.8mm}
+.lib-card.soft{background:var(--famP)}
+.lib-card h3{margin:0 0 1mm;font:700 9.8pt/1.2 'Poppins';color:var(--navy)}
+.lib-card p,.lib-card li{font-size:8.5pt;line-height:1.4}
+.lib-kicker{display:block;font:800 6.6pt/1.3 'Poppins';letter-spacing:.14em;text-transform:uppercase;color:var(--blue);margin-bottom:.6mm}
+.lib-note{font:700 11.5pt/1.15 'Caveat';color:var(--blue)}
+.lib-list{display:grid;row-gap:1.1mm}
+.lib-list li{position:relative;padding-left:3.6mm;font-size:8.7pt;line-height:1.4}
+.lib-list li::before{content:'';position:absolute;left:.5mm;top:1.55mm;width:1.5mm;height:1.5mm;border-radius:50%;background:var(--fam)}
+.lib-num{display:grid;grid-template-columns:6mm 1fr;column-gap:2.4mm;align-items:start}
+.lib-num .dot{width:6mm;height:6mm;font-size:8.6pt}
+.lib-table{width:100%;border-collapse:separate;border-spacing:0;font-size:8.2pt;line-height:1.3;background:#fff;border-radius:3mm;overflow:hidden}
+.lib-table th{font:700 7.4pt/1.25 'Poppins';text-align:left;color:var(--famI);background:var(--fam);padding:1.2mm 2mm;letter-spacing:.02em}
+.lib-table td{padding:1.1mm 2mm;border-top:.3mm solid var(--line);vertical-align:top}
+.lib-figure{margin:0}
+.lib-figure svg{display:block;width:100%;height:auto}

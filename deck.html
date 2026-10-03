@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decks Fichly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=block" rel="stylesheet">
+<script>
+// relevé des alertes pour l'interface de rendu (viewer.html)
+window.__errors = [];
+(function () { const e = console.error.bind(console); console.error = (...a) => { window.__errors.push(a.join(' ')); e(...a); };
+  window.addEventListener('error', ev => window.__errors.push('JS : ' + ev.message)); })();
+</script>
+<style>
+body.row{background:transparent;padding:6mm 0}
+body.row main{display:flex;flex-wrap:wrap;gap:6mm;justify-content:center;align-items:flex-start}
+body.row .sheet{margin:0;box-shadow:0 1px 2px rgba(7,18,70,.08),0 8px 24px rgba(7,18,70,.10)}
+</style>
+<link rel="stylesheet" href="assets/masks.css">
+<link rel="stylesheet" href="kit/kit.css">
+<script src="lib/rough.js"></script>
+<script src="lib/qrcode.min.js"></script>
+<script src="assets/persos/banque.js"></script>
+<script src="kit/kit.js"></script>
+<script src="cards/registry.js"></script>
+</head>
+<body>
+<main id="deck"></main>
+<script>
+// deck.html?deck=lean|aic[&only=id1,id2]  : charge les cartes du registre dans l'ordre puis rend le deck
+(function () {
+  const want = PARAMS.get('deck') || 'lean', only = PARAMS.get('only');
+  if (PARAMS.get('view') === 'row') document.body.classList.add('row');
+  const ids = Object.keys(REG).filter(id => REG[id].deck === want && REG[id].file && (!only || only.split(',').includes(id)))
+    .sort((a, b) => REG[a].order - REG[b].order);
+  let i = 0;
+  const next = () => {
+    if (i >= ids.length) {
+      const list = ids.map(id => CARDS.find(c => c.id === id)).filter(Boolean);
+      ids.filter(id => !CARDS.find(c => c.id === id)).forEach(id => console.warn(`carte absente : ${id}`));
+      renderDeck(list);
+      return;
+    }
+    const id = ids[i++];
+    let given = null; try { given = window.parent !== window && window.parent.__CARTES; } catch (e) {}
+    if (given && typeof given[id] === 'string') {   // contenu fourni par la page parente (bêta : chargé avec le code du testeur)
+      const s = document.createElement('script'); s.textContent = given[id]; document.body.appendChild(s); next(); return;
+    }
+    const s = document.createElement('script');
+    s.src = REG[id].file + '?v=' + Date.now();
+    s.onload = next; s.onerror = next;
+    document.body.appendChild(s);
+  };
+  next();
+})();
+</script>
+</body>
+</html>
