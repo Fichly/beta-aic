@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="data:,">
 <title>Bêta · Mini-deck AIC et Obeya · Fichly</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,6 +190,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 .brand{display:flex;align-items:center;gap:10px}
 .brand img{height:26px;width:auto}
 @media (max-width:820px){.notes-f{position:static;box-shadow:none}}   /* enregistrement automatique : rien à garder collé en bas */
+@media (max-width:820px){.avis textarea,.gate input[type=text],.gate input[type=email]{font-size:16px}}   /* Safari iOS zoome sur un champ de moins de 16 px */
 </style>
 </head>
 <body>
@@ -289,7 +291,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
     </div>
     <div id="gDone" style="display:grid;gap:10px" hidden>
       <p>Bienvenue <b id="doneName"></b> ! Voici votre code personnel :</p>
-      <div class="bigcode" id="doneCode"></div>
+      <div class="bigcode" id="doneCode" role="status"></div>
       <p>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</p>
       <button type="button" class="btn" id="doneCopy">Copier le code</button>
     </div>
@@ -298,7 +300,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
   </form>
 </div>
 
-<script src="cards/registry.js"></script>
+<script src="cards/registry.js?v=b6dd139f"></script>
 <script>
 /* Réglages de la page : decks montrés, origine des retours (le formulaire la reçoit), mode bêta (mode d'emploi) */
 const CONF = { decks: ['aic'], source: 'beta', beta: true, titre: 'Bêta · Mini-deck AIC et Obeya' };
@@ -368,7 +370,7 @@ function show(hash, label) {
   frame = document.createElement('iframe');
   frame.className = 'frame'; frame.title = label;
   frame.style.width = (matchMedia('(max-width:820px)').matches ? 620 : 1200) + 'px'; frame.style.height = '900px';   // téléphone : recto et verso l'un sous l'autre
-  frame.src = 'deck.html#' + hash + '&t=' + Date.now();
+  frame.src = 'deck.html?v=99b0c38f#' + hash + '&t=' + Date.now();
   stage.appendChild(frame);
   const alerts = document.createElement('div'); alerts.className = 'alerts'; alerts.innerHTML = CONF.beta ? '<h3>Chargement de la carte…</h3>' : '<h3>Rendu en cours…</h3>';
   const fail = () => { clearInterval(poll); alerts.className = 'alerts ko'; alerts.innerHTML = '<h3>La carte ne s’est pas affichée</h3><p>Vérifiez votre connexion, puis cliquez sur « Recharger ».</p>'; };
@@ -591,6 +593,7 @@ function openComposer(edit) {
   $('stage').appendChild(c);
   placeComposer();
   ta.focus({ preventScroll: true });
+  if (TOUCH) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' });   // téléphone : la bulle reste visible même si la carte dépasse de l'écran
   c.addEventListener('submit', e => { e.preventDefault(); saveComposer(); });
   c.querySelector('[data-a=cancel]').onclick = () => { closeComposer(); drawing = null; if (TOUCH) setTool(null); renderOverlay(); };
   ta.addEventListener('keydown', e => {
@@ -795,79 +798,137 @@ async function rpc(fn, args) {
   if (!r.ok) { const e = new Error((j && j.message) || ('HTTP ' + r.status)); e.code = (j && j.message) || 'http_' + r.status; throw e; }
   return j;
 }
-const SYNCED = {};    // id -> signature du dernier état enregistré
-let PENDING_DEL = new Set(), syncing = false, syncErr = '';
+const SYNCED = {};    // id -> signature du dernier état confirmé par le serveur
+let PENDING_DEL = new Set(), syncing = false, syncErr = '', cartesOk = false, chargement = false, avisSauve = '', avisT = null;
 const sigOf = a => JSON.stringify([a.card, a.page, a.type, a.geo, a.text, a.color]);
+const enAttente = a => a.text && SYNCED[a.id] !== sigOf(a);
 function syncState(a) { return SYNCED[a.id] === sigOf(a) ? 'ok' : (syncErr ? 'ko' : 'wait'); }
-function load() {   // copie locale : commentaires pas encore confirmés par le serveur
-  try { const v = JSON.parse(lsGet(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+function lsJSON(k, def) { try { const v = JSON.parse(lsGet(k) || 'null'); return v == null ? def : v; } catch (e) { return def; } }
+// Copie locale, par code : seulement ce que le serveur n'a pas encore confirmé (ajouts, modifications, suppressions),
+// plus un instantané pour rouvrir la page hors connexion. Un commentaire déjà enregistré n'y est jamais « en attente ».
+function load() { const v = lsJSON(KEY, []); return Array.isArray(v) ? v : []; }
+function loadSuppr() { const v = lsJSON(KEY + '-suppr', []); return Array.isArray(v) ? v : []; }
+function noterSuppressions() { const known = new Set(ANN.map(a => a.id)); Object.keys(SYNCED).forEach(id => { if (!known.has(id)) PENDING_DEL.add(id); }); }
+function saveLocal() {
+  if (!CODE) return;
+  lsSet(KEY, JSON.stringify(ANN.filter(enAttente)));
+  lsSet(KEY + '-suppr', JSON.stringify([...PENDING_DEL]));
+  lsSet(KEY + '-vu', JSON.stringify({ ann: ANN, synced: SYNCED }));
 }
 function persist() {
-  lsSet(KEY, JSON.stringify(ANN));
   ANN.forEach(a => { a.status = 'brouillon'; });
+  noterSuppressions(); saveLocal();
   renderList(); renderOverlay(); renderNotes(); renderSend();
   syncNow();
 }
 async function syncNow() {
   if (syncing || !CODE) return;
+  if (!cartesOk) { reprendre(); return; }   // ouverte hors connexion : relire le serveur avant d'envoyer
   syncing = true;
   try {
-    const known = new Set(ANN.map(a => a.id));
-    Object.keys(SYNCED).forEach(id => { if (!known.has(id)) PENDING_DEL.add(id); });
-    for (const id of [...PENDING_DEL]) { await rpc('supprimer', { p_code: CODE, p_id: id }); delete SYNCED[id]; PENDING_DEL.delete(id); }
+    noterSuppressions();
+    for (const id of [...PENDING_DEL]) { await rpc('supprimer', { p_code: CODE, p_id: id }); delete SYNCED[id]; PENDING_DEL.delete(id); saveLocal(); }
     for (const a of ANN.slice()) {
       const sig = sigOf(a);
       if (SYNCED[a.id] === sig || !a.text) continue;
       await rpc('enregistrer', { p_code: CODE, p_id: a.id, p_card: a.card, p_page: +String(a.page).slice(-2), p_type: a.type, p_geo: a.geo, p_texte: a.text, p_couleur: a.color || COLORS[0][0] });
-      SYNCED[a.id] = sig;
+      SYNCED[a.id] = sig; saveLocal();
     }
+    const v = $('avisText').value.trim();
+    if (v !== avisSauve) { await rpc('enregistrer_avis', { p_code: CODE, p_texte: v }); avisSauve = v; if ($('avisText').value.trim() === v) lsSet(KEY + '-avis', ''); avisEtat(); }
     syncErr = '';
   } catch (e) {
     syncErr = e.code === 'code_inconnu' ? 'Votre code n’est plus reconnu : reconnectez-vous.' : e.code === 'trop_de_commentaires' ? 'Limite de 500 commentaires atteinte.' : 'Connexion impossible : vos commentaires sont gardés sur cet appareil et seront enregistrés dès le retour de la connexion.';
   }
   syncing = false;
   renderNotes(); renderSend();
-  if (!syncErr && ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a))) syncNow();   // une modification arrivée pendant l'envoi
+  noterSuppressions();
+  if (!syncErr && (PENDING_DEL.size || ANN.some(enAttente))) syncNow();   // une modification ou une suppression arrivée pendant l'envoi
 }
-setInterval(() => { if (syncErr) syncNow(); }, 20000);
-window.addEventListener('online', () => syncNow());
-window.addEventListener('beforeunload', e => { if (ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a)) || PENDING_DEL.size) { e.preventDefault(); e.returnValue = ''; } });
+async function reprendre() {   // retour de la connexion : cartes d'abord si elles manquent, puis commentaires en attente
+  if (!CODE) return;
+  if (!cartesOk) { if (!(await charger())) return; renderList(); renderOverlay(); renderNotes(); renderSend(); showCard(current || ids(deck)[0]); }
+  syncNow();
+}
+setInterval(() => { if (CODE && (syncErr || !cartesOk)) reprendre(); }, 20000);
+window.addEventListener('online', () => reprendre());
+window.addEventListener('beforeunload', e => { if (ANN.some(enAttente) || PENDING_DEL.size || (CODE && $('avisText').value.trim() !== avisSauve)) { e.preventDefault(); e.returnValue = ''; } });
 function renderSend() {
   const box = $('sync'); if (!box) return;
   const waiting = ANN.filter(a => a.text && SYNCED[a.id] !== sigOf(a)).length + PENDING_DEL.size;
   box.className = 'sync' + (syncErr ? ' ko' : waiting ? ' wait' : '');
-  box.textContent = syncErr ? syncErr : waiting ? `Enregistrement de ${waiting} commentaire${waiting > 1 ? 's' : ''}…` : (ANN.length ? `✓ ${ANN.length} commentaire${ANN.length > 1 ? 's' : ''} enregistré${ANN.length > 1 ? 's' : ''}` : '✓ Enregistrement automatique');
+  box.textContent = syncErr ? syncErr : !cartesOk && CODE ? 'Chargement de vos commentaires…' : waiting ? `Enregistrement de ${waiting} commentaire${waiting > 1 ? 's' : ''}…` : (ANN.length ? `✓ ${ANN.length} commentaire${ANN.length > 1 ? 's' : ''} enregistré${ANN.length > 1 ? 's' : ''}` : '✓ Enregistrement automatique');
 }
 function setInert(on) { document.querySelectorAll('header,aside.cards,main').forEach(e => { e.inert = on; }); }
+// Fusion : état du serveur, puis ce qui attend encore sur cet appareil (ajouts et modifications l'emportent, suppressions retirées).
+function fusionner(mine) {
+  const server = ((mine && mine.commentaires) || []).map(c => ({ id: c.id, deck: 'aic', card: c.card, page: `${c.card}-${String(c.page).padStart(2, '0')}`, type: c.type, geo: c.geo, text: c.texte, color: c.couleur, status: 'brouillon', createdAt: c.created_at }));
+  const pend = load().concat(ANN.filter(enAttente)), suppr = new Set(loadSuppr().concat([...PENDING_DEL]));
+  Object.keys(SYNCED).forEach(k => delete SYNCED[k]);
+  server.forEach(a => { SYNCED[a.id] = sigOf(a); });
+  const byId = new Map(server.map(a => [a.id, a]));
+  pend.forEach(a => { if (a && a.id && a.text) byId.set(a.id, a); });
+  suppr.forEach(id => byId.delete(id));
+  ANN = [...byId.values()];
+  PENDING_DEL = new Set([...suppr].filter(id => SYNCED[id]));
+  saveLocal();
+}
+async function charger() {   // cartes et commentaires du testeur ; renvoie false si la connexion manque
+  if (chargement) return false;
+  chargement = true;
+  try {
+    const [cartes, mine] = await Promise.all([rpc('cartes_aic', { p_code: CODE }), rpc('mes_commentaires', { p_code: CODE })]);
+    window.__CARTES = cartes || {};
+    Object.keys(REG).forEach(id => { ready[id] = !!window.__CARTES[id]; });
+    fusionner(mine);
+    avisSauve = ((mine && mine.avis) || '').trim();
+    const brouillon = lsGet(KEY + '-avis');
+    $('avisText').value = brouillon ? brouillon : avisSauve; avisEtat();
+    cartesOk = true; syncErr = ''; setStatus('');
+    return true;
+  } catch (e) {
+    if (e.code === 'code_inconnu') { logout(); askCode('Ce code n’est pas reconnu. Vérifiez-le, ou inscrivez-vous.'); return false; }
+    syncErr = 'Connexion impossible pour le moment : la page réessaie toute seule, vos commentaires sont gardés sur cet appareil.';
+    setStatus('');
+    return false;
+  } finally { chargement = false; }
+}
 async function enter(code, prenom) {
   setInert(false);
-  CODE = code; KEY = 'fichly-beta-aic-' + code;
+  CODE = code; KEY = 'fichly-beta-aic-v2-' + code;   // v2 : la copie locale ne contient plus que ce qui attend d'être enregistré
   lsSet('fichly-code', code);
   $('whoCode').textContent = code; $('hello').textContent = prenom ? `Bonjour ${prenom}` : ''; $('who').hidden = false;
   $('gate').hidden = true;
+  cartesOk = false;
   setStatus('Chargement de vos cartes et de vos commentaires…');
-  try {
-    const [cartes, mine] = await Promise.all([rpc('cartes_aic', { p_code: code }), rpc('mes_commentaires', { p_code: code })]);
-    window.__CARTES = cartes || {};
-    Object.keys(REG).forEach(id => { ready[id] = !!window.__CARTES[id]; });
-    const server = ((mine && mine.commentaires) || []).map(c => ({ id: c.id, deck: 'aic', card: c.card, page: `${c.card}-${String(c.page).padStart(2, '0')}`, type: c.type, geo: c.geo, text: c.texte, color: c.couleur, status: 'brouillon', createdAt: c.created_at }));
-    server.forEach(a => { SYNCED[a.id] = sigOf(a); });
-    const local = load().filter(a => a.text && !server.some(x => x.id === a.id));   // en attente sur cet appareil
-    ANN = server.concat(local);
-    $('avisText').value = (mine && mine.avis) || '';
-    setStatus('');
-  } catch (e) {
-    if (e.code === 'code_inconnu') { logout(); return askCode('Ce code n’est pas reconnu. Vérifiez-le, ou inscrivez-vous.'); }
-    ANN = load(); syncErr = 'Connexion impossible pour le moment. Réessayez dans un instant.';
+  if (!(await charger())) {
+    if (!CODE) return;   // code refusé : l'écran d'accès est déjà affiché
+    const vu = lsJSON(KEY + '-vu', {});   // hors connexion : dernier état connu sur cet appareil
+    ANN = Array.isArray(vu.ann) ? vu.ann : load(); Object.assign(SYNCED, vu.synced || {});
+    PENDING_DEL = new Set(loadSuppr());
+    const brouillon = lsGet(KEY + '-avis'); if (brouillon) $('avisText').value = brouillon;
   }
   renderList(); renderNotes(); renderSend();
-  if (ANN.some(a => a.text && SYNCED[a.id] !== sigOf(a))) syncNow();
+  if (cartesOk && (PENDING_DEL.size || ANN.some(enAttente) || $('avisText').value.trim() !== avisSauve)) syncNow();   // y compris un dernier mot resté sur l'appareil
   showCard(ids(deck)[0]);
 }
+// Retour sur l'onglet (ou autre onglet du même testeur) : relire ses commentaires sur le serveur
+async function rafraichir() {
+  if (!CODE || !cartesOk || syncing || chargement || composer || document.hidden) return;
+  try {
+    const mine = await rpc('mes_commentaires', { p_code: CODE });
+    if (syncing || composer) return;
+    fusionner(mine);
+    renderList(); renderOverlay(); renderNotes(); renderSend();
+    if (PENDING_DEL.size || ANN.some(enAttente)) syncNow();
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) rafraichir(); });
 function logout() {
   closeComposer(); drawing = null; setTool(null);
   CODE = null; lsSet('fichly-code', ''); $('who').hidden = true;
-  ANN = []; Object.keys(SYNCED).forEach(k => delete SYNCED[k]); PENDING_DEL = new Set(); window.__CARTES = {};
+  ANN = []; Object.keys(SYNCED).forEach(k => delete SYNCED[k]); PENDING_DEL = new Set(); window.__CARTES = {}; cartesOk = false; syncErr = '';
+  avisSauve = ''; $('avisText').value = ''; avisEtat();
   $('stage').innerHTML = '<div class="empty">Connectez-vous avec votre code pour voir les cartes.</div>'; frame = null; overlay = null;
   renderList(); renderNotes(); renderSend();
 }
@@ -908,9 +969,11 @@ $('gateForm').addEventListener('submit', async e => {
     lsSet('fichly-code', code);
     $('doneName').textContent = P.p_prenom; $('doneCode').textContent = code;
     gateMode('done');
+    go.disabled = false; go.focus();   // Entrée mène directement aux cartes
   } catch (ex) {
     err.textContent = ex.code === 'deja_inscrit' ? 'Cette adresse e-mail est déjà inscrite : utilisez votre code (onglet « J’ai mon code »). Code perdu ? Écrivez à contact@fichly.com.'
       : ex.code === 'complet' ? 'La bêta est complète. Merci de votre intérêt !'
+      : ex.code === 'patientez' ? 'Beaucoup d’inscriptions depuis votre connexion en ce moment : réessayez dans quelques minutes.'
       : 'Connexion impossible pour le moment. Vérifiez votre connexion Internet et réessayez.';
   } finally { go.disabled = false; }
 });
@@ -918,12 +981,20 @@ $('doneCopy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(doneInfo.code); $('doneCopy').textContent = 'Code copié'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('doneCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
 });
 $('logout').addEventListener('click', () => { logout(); askCode(); });
-$('avisSave').addEventListener('click', async () => {
-  const b = $('avisSave'); b.disabled = true;
-  try { await rpc('enregistrer_avis', { p_code: CODE, p_texte: $('avisText').value }); $('avisInfo').textContent = '✓ Enregistré'; }
-  catch (e) { $('avisInfo').textContent = 'Non enregistré : réessayez.'; }
-  b.disabled = false;
-});
+// Dernier mot : enregistré tout seul après une pause de frappe, gardé sur l'appareil tant qu'il n'est pas confirmé
+function avisEtat() { const v = $('avisText').value.trim(); $('avisInfo').textContent = !CODE ? '' : v === avisSauve ? (v ? '✓ Enregistré' : '') : 'Non enregistré'; }
+async function sauverAvis() {
+  clearTimeout(avisT);
+  const v = $('avisText').value.trim();
+  if (!CODE || v === avisSauve) { avisEtat(); return; }
+  try { await rpc('enregistrer_avis', { p_code: CODE, p_texte: v }); avisSauve = v; if ($('avisText').value.trim() === v) lsSet(KEY + '-avis', ''); avisEtat(); }
+  catch (e) { $('avisInfo').textContent = 'Non enregistré : nouvel essai dès le retour de la connexion.'; if (!syncErr) syncErr = 'Connexion impossible : votre texte est gardé sur cet appareil et sera enregistré dès le retour de la connexion.'; renderSend(); }
+}
+$('avisText').addEventListener('input', () => { if (!CODE) return; lsSet(KEY + '-avis', $('avisText').value); avisEtat(); clearTimeout(avisT); avisT = setTimeout(sauverAvis, 1500); });
+$('avisSave').addEventListener('click', async () => { const b = $('avisSave'); b.disabled = true; await sauverAvis(); b.disabled = false; });
+// Recharger : si les cartes n'ont pas pu être chargées, on les redemande d'abord
+{ const r = $('reload'), nr = r.cloneNode(true); r.replaceWith(nr);
+  nr.addEventListener('click', async () => { if (CODE && !cartesOk) { await reprendre(); return; } if (!frame) return; current ? showCard(current) : $('whole').click(); }); }
 document.title = 'Bêta · Mini-deck AIC et Obeya · Fichly';
 $('tabs').hidden = true; $('help').hidden = false; $('whole').hidden = true; $('toggleNotes').hidden = true;
 if (lsGet('fichly-bienvenue-vue') !== '1') $('welcome').hidden = false;

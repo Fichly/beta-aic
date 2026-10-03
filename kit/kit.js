@@ -21,7 +21,7 @@ const QR_TXT = 'fichly.com/pages/templates';
 /* =========================================================
    Outils de mise en forme
    ========================================================= */
-const PARAMS = new URLSearchParams(location.search.length > 1 ? location.search : location.hash.slice(1));   // paramètres en ?… ou en #… (page publiée)
+const PARAMS = new URLSearchParams(location.search.slice(1) + '&' + location.hash.slice(1));   // paramètres en ?… et en #… (page publiée ; ?v=… sert de numéro de version)
 const FORMAT = (PARAMS.get('format') || 'a5').toLowerCase();
 const V = +(PARAMS.get('v') || 3);            // 3 = visuel pièce maîtresse (par défaut), 2 = recto épuré, 1 = première version
 const ONLY = PARAMS.get('only');               // numéro d'une seule fiche
