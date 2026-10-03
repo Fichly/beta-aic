@@ -10,6 +10,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}   /* Safari iOS : pas d'agrandissement automatique du texte (la carte a une taille fixe) */
 body{background:#cfcabd;font-family:'Poppins',sans-serif;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:8.7pt;line-height:1.4}
 @media screen{body{padding:8mm 0}}
 @media print{body{background:none;padding:0}.sheet{margin:0!important}}
