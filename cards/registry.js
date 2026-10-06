@@ -304,19 +304,6 @@ const REG = {
   ],
   "kind": "outil"
  },
- "aic-21b": {
-  "deck": "aic",
-  "order": 22.5,
-  "num": 22,
-  "name": "Obeya RH",
-  "fam": 3,
-  "section": "AIC · Ancrer et étendre",
-  "file": "cards/aic/aic-21b.js",
-  "pages": [
-   50
-  ],
-  "kind": "libre"
- },
  "aic-22": {
   "deck": "aic",
   "order": 23,
