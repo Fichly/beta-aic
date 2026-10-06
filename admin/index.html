@@ -115,13 +115,18 @@ table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
 }
 @media (prefers-reduced-motion: reduce){.thumb .flash{animation:none}}
 .tsel{position:relative}
-.tpanel{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:min(380px,90vw);max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px var(--shadow);padding:10px 12px}
-.tpanel .tp-h{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:700;font-size:13px}
-.tpanel ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
-.tpanel li{display:flex;align-items:center;gap:8px}
-.tpanel label{flex:1;display:flex;gap:8px;align-items:center;font-size:13px;min-width:0}
-.tpanel .n{color:var(--muted)}
-.tpanel .seul{font-size:12px;padding:4px 8px}
+.seg{display:inline-flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px}
+.seg .btn[aria-pressed=true]{background:var(--panel);color:var(--accent)}
+.tpanel{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:min(400px,92vw);max-height:62vh;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px var(--shadow);padding:10px 12px}
+.tpanel[hidden]{display:none}
+#tSearch{font:500 13px var(--sans);padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-width:0}
+.tp-b{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted)}
+#tList{list-style:none;margin:0;padding:0;overflow:auto;display:grid;gap:2px;min-height:0}
+#tList li{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:8px}
+#tList li:hover{background:var(--bg)}
+#tList label{flex:1;display:flex;gap:8px;align-items:center;font-size:13px;min-width:0;cursor:pointer}
+#tList .n{color:var(--muted)}
+#tList .seul{font-size:12px;padding:3px 8px}
 </style>
 
 <header>
@@ -137,7 +142,17 @@ table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
 <main>
   <div class="bar">
     <h2 id="title">Chargement des réponses…</h2>
-    <div class="tsel" id="tsel"><button type="button" class="btn" id="tBtn" aria-expanded="false" aria-controls="tPanel">Testeurs : tous</button><div class="tpanel" id="tPanel" hidden></div></div>
+    <div class="tsel" id="tsel">
+      <div class="seg" role="group" aria-label="Commentaires affichés">
+        <button type="button" class="btn" id="tAll" aria-pressed="true">Tous les commentaires</button>
+        <button type="button" class="btn" id="tSel" aria-pressed="false">Sélection</button>
+      </div>
+      <div class="tpanel" id="tPanel" hidden>
+        <input type="search" id="tSearch" placeholder="Chercher un testeur" aria-label="Chercher un testeur">
+        <div class="tp-b"><span id="tCount"></span><span><button type="button" class="btn" id="tCocher">Tout cocher</button> <button type="button" class="btn" id="tDecocher">Tout décocher</button></span></div>
+        <ul id="tList"></ul>
+      </div>
+    </div>
     <div class="filter" id="filter" role="group" aria-label="Afficher">
       <button type="button" data-f="a-trier" aria-pressed="true">À trier</button>
       <button type="button" data-f="retenu" aria-pressed="false">Retenus</button>
@@ -170,27 +185,29 @@ async function rpc(fn, args) {
   if (!r.ok) { const e = new Error((j && j.message) || ('HTTP ' + r.status)); e.code = (j && j.message) || 'http_' + r.status; throw e; }
   return j;
 }
-let TSEL = null;   // null = tous les testeurs ; sinon les codes choisis dans le panneau « Testeurs »
+let TSEL = null;   // null = tous les commentaires ; sinon les codes des testeurs choisis
 const montre = f => !TSEL || TSEL.has(f.code);
 const escT = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+const tNom = c => ((REGS[c].prenom || '') + ' ' + (REGS[c].nom || '')).trim() || 'Testeur';
 function renderTSel() {
   const codes = Object.keys(REGS).sort((a, b) => String(REGS[a].date).localeCompare(String(REGS[b].date)));
   const n = {}; FB.forEach(f => { n[f.code] = (n[f.code] || 0) + 1; });
-  $('tBtn').textContent = TSEL ? `Testeurs : ${codes.filter(c => TSEL.has(c)).length} sur ${codes.length}` : `Testeurs : tous (${codes.length})`;
-  $('tPanel').innerHTML = `<div class="tp-h"><span>Afficher les commentaires de</span><span><button type="button" class="btn" data-a="tous">Tous</button> <button type="button" class="btn" data-a="aucun">Aucun</button></span></div><ul>${codes.map(c => `<li><label><input type="checkbox" value="${escT(c)}"${!TSEL || TSEL.has(c) ? ' checked' : ''}> <span>${escT(((REGS[c].prenom || '') + ' ' + (REGS[c].nom || '')).trim() || 'Testeur')}</span> <span class="n">(${n[c] || 0})</span></label><button type="button" class="btn seul" data-a="seul" data-code="${escT(c)}">seul</button></li>`).join('')}</ul>`;
+  $('tAll').setAttribute('aria-pressed', String(!TSEL));
+  $('tSel').setAttribute('aria-pressed', String(!!TSEL));
+  $('tSel').textContent = TSEL ? `Sélection (${codes.filter(c => TSEL.has(c)).length})` : 'Sélection';
+  const q = $('tSearch').value.trim().toLowerCase();
+  const vus = codes.filter(c => !q || `${tNom(c)} ${c}`.toLowerCase().includes(q));
+  $('tCount').textContent = `${vus.length} testeur${vus.length > 1 ? 's' : ''}`;
+  $('tList').innerHTML = vus.map(c => `<li><label><input type="checkbox" value="${escT(c)}"${!TSEL || TSEL.has(c) ? ' checked' : ''}> <span>${escT(tNom(c))}</span> <span class="n">(${n[c] || 0})</span></label><button type="button" class="btn seul" data-code="${escT(c)}">seul</button></li>`).join('') || '<li class="n">Aucun testeur ne correspond.</li>';
 }
 function initTSel() {
-$('tBtn').addEventListener('click', () => { const p = $('tPanel'); p.hidden = !p.hidden; $('tBtn').setAttribute('aria-expanded', String(!p.hidden)); });
-$('tPanel').addEventListener('change', e => {
-  if (!e.target.matches('input[type=checkbox]')) return;
-  const boites = [...$('tPanel').querySelectorAll('input[type=checkbox]')], coches = boites.filter(x => x.checked).map(x => x.value);
-  TSEL = coches.length === boites.length ? null : new Set(coches); render();
-});
-$('tPanel').addEventListener('click', e => {
-  const b = e.target.closest('button[data-a]'); if (!b) return;
-  if (b.dataset.a === 'tous') TSEL = null; else if (b.dataset.a === 'aucun') TSEL = new Set(); else TSEL = new Set([b.dataset.code]);
-  render();
-});
+  $('tAll').addEventListener('click', () => { TSEL = null; $('tPanel').hidden = true; render(); });
+  $('tSel').addEventListener('click', () => { if (!TSEL) TSEL = new Set(); $('tPanel').hidden = false; render(); $('tSearch').focus({ preventScroll: true }); });
+  $('tSearch').addEventListener('input', renderTSel);
+  $('tCocher').addEventListener('click', () => { if (!TSEL) TSEL = new Set(); $('tList').querySelectorAll('input[type=checkbox]').forEach(x => TSEL.add(x.value)); render(); });
+  $('tDecocher').addEventListener('click', () => { if (!TSEL) TSEL = new Set(); $('tList').querySelectorAll('input[type=checkbox]').forEach(x => TSEL.delete(x.value)); render(); });
+  $('tList').addEventListener('change', e => { if (!e.target.matches('input[type=checkbox]')) return; if (!TSEL) TSEL = new Set(); if (e.target.checked) TSEL.add(e.target.value); else TSEL.delete(e.target.value); render(); });
+  $('tList').addEventListener('click', e => { const b = e.target.closest('button.seul'); if (!b) return; TSEL = new Set([b.dataset.code]); render(); });
 }
 function setDecisions(d) {   // décisions enregistrées ; les écritures en cours gardent leur valeur
   const next = {}; Object.keys(d).forEach(k => { next[k] = d[k]; });
