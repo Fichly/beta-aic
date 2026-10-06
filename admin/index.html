@@ -114,6 +114,14 @@ table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
   .head-r{margin-left:0}
 }
 @media (prefers-reduced-motion: reduce){.thumb .flash{animation:none}}
+.tsel{position:relative}
+.tpanel{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:min(380px,90vw);max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px var(--shadow);padding:10px 12px}
+.tpanel .tp-h{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:700;font-size:13px}
+.tpanel ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.tpanel li{display:flex;align-items:center;gap:8px}
+.tpanel label{flex:1;display:flex;gap:8px;align-items:center;font-size:13px;min-width:0}
+.tpanel .n{color:var(--muted)}
+.tpanel .seul{font-size:12px;padding:4px 8px}
 </style>
 
 <header>
@@ -129,6 +137,7 @@ table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
 <main>
   <div class="bar">
     <h2 id="title">Chargement des réponses…</h2>
+    <div class="tsel" id="tsel"><button type="button" class="btn" id="tBtn" aria-expanded="false" aria-controls="tPanel">Testeurs : tous</button><div class="tpanel" id="tPanel" hidden></div></div>
     <div class="filter" id="filter" role="group" aria-label="Afficher">
       <button type="button" data-f="a-trier" aria-pressed="true">À trier</button>
       <button type="button" data-f="retenu" aria-pressed="false">Retenus</button>
@@ -160,6 +169,28 @@ async function rpc(fn, args) {
   const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
   if (!r.ok) { const e = new Error((j && j.message) || ('HTTP ' + r.status)); e.code = (j && j.message) || 'http_' + r.status; throw e; }
   return j;
+}
+let TSEL = null;   // null = tous les testeurs ; sinon les codes choisis dans le panneau « Testeurs »
+const montre = f => !TSEL || TSEL.has(f.code);
+const escT = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+function renderTSel() {
+  const codes = Object.keys(REGS).sort((a, b) => String(REGS[a].date).localeCompare(String(REGS[b].date)));
+  const n = {}; FB.forEach(f => { n[f.code] = (n[f.code] || 0) + 1; });
+  $('tBtn').textContent = TSEL ? `Testeurs : ${codes.filter(c => TSEL.has(c)).length} sur ${codes.length}` : `Testeurs : tous (${codes.length})`;
+  $('tPanel').innerHTML = `<div class="tp-h"><span>Afficher les commentaires de</span><span><button type="button" class="btn" data-a="tous">Tous</button> <button type="button" class="btn" data-a="aucun">Aucun</button></span></div><ul>${codes.map(c => `<li><label><input type="checkbox" value="${escT(c)}"${!TSEL || TSEL.has(c) ? ' checked' : ''}> <span>${escT(((REGS[c].prenom || '') + ' ' + (REGS[c].nom || '')).trim() || 'Testeur')}</span> <span class="n">(${n[c] || 0})</span></label><button type="button" class="btn seul" data-a="seul" data-code="${escT(c)}">seul</button></li>`).join('')}</ul>`;
+}
+function initTSel() {
+$('tBtn').addEventListener('click', () => { const p = $('tPanel'); p.hidden = !p.hidden; $('tBtn').setAttribute('aria-expanded', String(!p.hidden)); });
+$('tPanel').addEventListener('change', e => {
+  if (!e.target.matches('input[type=checkbox]')) return;
+  const boites = [...$('tPanel').querySelectorAll('input[type=checkbox]')], coches = boites.filter(x => x.checked).map(x => x.value);
+  TSEL = coches.length === boites.length ? null : new Set(coches); render();
+});
+$('tPanel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  if (b.dataset.a === 'tous') TSEL = null; else if (b.dataset.a === 'aucun') TSEL = new Set(); else TSEL = new Set([b.dataset.code]);
+  render();
+});
 }
 function setDecisions(d) {   // décisions enregistrées ; les écritures en cours gardent leur valeur
   const next = {}; Object.keys(d).forEach(k => { next[k] = d[k]; });
@@ -297,20 +328,20 @@ async function saveDecision(key, patch, quiet) {
 
 /* ---------- Affichage ---------- */
 function showMsg(t, ko) { const m = $('msg'); m.hidden = !t; m.textContent = t || ''; m.className = 'msg' + (ko ? ' ko' : ''); }
-const visible = f => filter === 'tout' || stay.has(f.key) || statutOf(f) === filter || (filter === 'a-trier' && statutOf(f) === 'a-revoir');
+const visible = f => montre(f) && (filter === 'tout' || stay.has(f.key) || statutOf(f) === filter || (filter === 'a-trier' && statutOf(f) === 'a-revoir'));
 function numbers() { const per = {}, n = {}; FB.forEach(f => { const k = f.card || 'general'; per[k] = (per[k] || 0) + 1; n[f.key] = per[k]; }); return n; }
-function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs'; }
+function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs'; $('tsel').hidden = current === 'testeurs'; renderTSel(); }
 function renderStats() {
   const testers = new Set(FB.map(f => f.sid)).size;
   const c = { 'a-trier': 0, retenu: 0, ecarte: 0, 'a-revoir': 0 };
-  FB.forEach(f => c[statutOf(f)]++);
+  FB.filter(montre).forEach(f => c[statutOf(f)]++);
   $('gen').textContent = c.retenu ? `Générer le prompt (${c.retenu} retenu${c.retenu > 1 ? 's' : ''})` : 'Générer le prompt';
   if (!loaded) { $('stats').innerHTML = `<span class="chip">${loadFailed ? 'Données indisponibles' : 'Lecture…'}</span>`; return; }
   $('stats').innerHTML = `<span class="chip">${testers} testeur${testers > 1 ? 's' : ''} actif${testers > 1 ? 's' : ''}</span><span class="chip">${FB.length} retour${FB.length > 1 ? 's' : ''}</span><span class="chip tri">${c['a-trier'] + c['a-revoir']} à trier</span><span class="chip ret">${c.retenu} retenu${c.retenu > 1 ? 's' : ''}</span><span class="chip eca">${c.ecarte} écarté${c.ecarte > 1 ? 's' : ''}</span>`;
 }
 function renderCards() {
   const per = {};
-  FB.forEach(f => { const k = f.card || 'general'; per[k] = per[k] || { t: 0, r: 0 }; if (statutOf(f) === 'retenu') per[k].r++; else if (statutOf(f) !== 'ecarte') per[k].t++; });
+  FB.filter(montre).forEach(f => { const k = f.card || 'general'; per[k] = per[k] || { t: 0, r: 0 }; if (statutOf(f) === 'retenu') per[k].r++; else if (statutOf(f) !== 'ecarte') per[k].t++; });
   let html = '', last = null;
   const entry = (id, num, name, col) => {
     const p = per[id] || { t: 0, r: 0 };
@@ -393,7 +424,7 @@ function renderList() {
   if (current === 'testeurs') return renderTesters();
   const box = $('list'), nums = numbers();
   const act = document.activeElement, typing = act && act.tagName === 'TEXTAREA' && act.closest('.fb') ? { key: act.closest('.fb').dataset.key, value: act.value, a: act.selectionStart, b: act.selectionEnd } : null;
-  const mine = FB.filter(f => (current === 'general' ? f.card === null : f.card === current));
+  const mine = FB.filter(f => montre(f) && (current === 'general' ? f.card === null : f.card === current));
   $('title').textContent = current === 'general' ? 'Remarques générales' : `N°${REG[current].num} · ${REG[current].name}`;
   const list = mine.filter(visible);
   const keepTop = box.scrollTop;
@@ -613,6 +644,7 @@ async function load(force) {
 $('refresh').addEventListener('click', () => load(true));
 setInterval(() => { if (!document.hidden) load(); }, 120000);
 async function start() {
+  initTSel();
   render();
   CODE = sessionStorage.getItem('admin-code') || '';
   if (!CODE) CODE = (prompt('Code admin de la validation (fourni par Hugo) :') || '').trim();

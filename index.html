@@ -190,6 +190,8 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 .brand{display:flex;align-items:center;gap:10px}
 .brand img{height:26px;width:auto}
 .pdfl{font-weight:700;color:var(--accent);margin-left:10px}
+#finBtn{background:none;border:0;padding:0;margin-left:14px;color:var(--accent);font:700 14px var(--sans);cursor:pointer;text-decoration:underline}
+.finInfo{display:block;width:100%;font:600 13px var(--sans);color:var(--ok)}
 .gate .check a,.gate .lost a{color:var(--accent);font-weight:700}
 .gate .lost{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
 .gate .lost .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -207,7 +209,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
     <button type="button" data-deck="aic" aria-pressed="false">AIC et Obeya</button>
   </div>
   <button type="button" class="helpbtn" id="help" hidden>Mode d’emploi</button>
-  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><a id="pdfLink" class="pdfl" target="_blank" rel="noopener">Télécharger les fiches (PDF)</a><button type="button" id="logout">Se déconnecter</button></div>
+  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><a id="pdfLink" class="pdfl" target="_blank" rel="noopener">Télécharger les fiches (PDF)</a><button type="button" id="finBtn" aria-pressed="false">J’ai terminé</button><span id="finInfo" class="finInfo" role="status"></span><button type="button" id="logout">Se déconnecter</button></div>
   <div class="progress" hidden><span id="count"></span><div class="bar" aria-hidden="true"><i id="barfill"></i></div></div>
 </header>
 <aside class="cards">
@@ -223,6 +225,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
         <li>Annotez ce qui vous gêne ou vous plaît : <b>Note</b> (touchez ou cliquez l’endroit), <b>Entourer</b>, <b>Flèche</b> ou <b>Crayon</b> (faites glisser le doigt ou la souris), puis écrivez votre commentaire.</li>
         <li>Chaque commentaire est <b>enregistré automatiquement</b>. Revenez quand vous voulez, sur n’importe quel appareil, avec votre code personnel.</li>
         <li>Les fiches sont aussi téléchargeables en PDF (lien en haut de page), pour vous seul·e : voir le <a href="contrat-beta-aic.html" target="_blank" rel="noopener">contrat de bêta-test</a>.</li>
+        <li>La bêta se termine le <b>dimanche 25 octobre 2026</b>. Quand vous avez terminé, cliquez sur « J’ai terminé » en haut de page : vous ne recevrez plus de rappels par e-mail.</li>
       </ol>
       <div class="codebox" id="codebox" hidden>Votre code personnel : <b id="codeShow"></b><button type="button" class="btn" id="codeCopy">Copier</button><span>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</span></div>
     </div>
@@ -868,6 +871,21 @@ function renderSend() {
   box.className = 'sync' + (syncErr ? ' ko' : waiting ? ' wait' : '');
   box.textContent = syncErr ? syncErr : !cartesOk && CODE ? 'Chargement de vos commentaires…' : waiting ? `Enregistrement de ${waiting} commentaire${waiting > 1 ? 's' : ''}…` : (ANN.length ? `✓ ${ANN.length} commentaire${ANN.length > 1 ? 's' : ''} enregistré${ANN.length > 1 ? 's' : ''}` : '✓ Enregistrement automatique');
 }
+// « J’ai terminé » : le testeur ne reçoit plus les rappels par e-mail
+let FIN = null;   // date à laquelle le testeur a dit « terminé » (null = pas encore)
+function majFin() {
+  const b = $('finBtn'); if (!b) return;
+  b.textContent = FIN ? 'Reprendre les retours' : 'J’ai terminé';
+  b.setAttribute('aria-pressed', String(!!FIN));
+  $('finInfo').textContent = FIN ? 'Merci : votre participation est terminée. Vous ne recevrez plus de rappels, et vous pouvez continuer à annoter.' : '';
+}
+$('finBtn').addEventListener('click', async () => {
+  if (!CODE) return;
+  const b = $('finBtn'); b.disabled = true;
+  try { FIN = (await rpc('marquer_termine', { p_code: CODE, p_termine: !FIN })) || null; }
+  catch (e) { $('finInfo').textContent = 'Connexion impossible : réessayez dans un instant.'; b.disabled = false; return; }
+  b.disabled = false; majFin();
+});
 function setInert(on) { document.querySelectorAll('header,aside.cards,main').forEach(e => { e.inert = on; }); }
 // Fusion : état du serveur, puis ce qui attend encore sur cet appareil (ajouts et modifications l'emportent, suppressions retirées).
 function fusionner(mine) {
@@ -918,6 +936,7 @@ async function enter(code, prenom) {
     PENDING_DEL = new Set(loadSuppr());
     const brouillon = lsGet(KEY + '-avis'); if (brouillon) $('avisText').value = brouillon;
   }
+  FIN = await rpc('mon_etat', { p_code: CODE }).catch(() => null); majFin();
   renderList(); renderNotes(); renderSend();
   if (cartesOk && (PENDING_DEL.size || ANN.some(enAttente) || $('avisText').value.trim() !== avisSauve)) syncNow();   // y compris un dernier mot resté sur l'appareil
   showCard(ids(deck)[0]);
@@ -936,7 +955,7 @@ async function rafraichir() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) rafraichir(); });
 function logout() {
   closeComposer(); drawing = null; setTool(null);
-  CODE = null; lsSet('fichly-code', ''); $('who').hidden = true;
+  CODE = null; lsSet('fichly-code', ''); $('who').hidden = true; FIN = null;
   ANN = []; Object.keys(SYNCED).forEach(k => delete SYNCED[k]); PENDING_DEL = new Set(); window.__CARTES = {}; cartesOk = false; syncErr = '';
   avisSauve = ''; $('avisText').value = ''; avisEtat();
   $('stage').innerHTML = '<div class="empty">Connectez-vous avec votre code pour voir les cartes.</div>'; frame = null; overlay = null;
