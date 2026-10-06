@@ -22,7 +22,7 @@ const QR_TXT = 'fichly.com/pages/templates';
    Outils de mise en forme
    ========================================================= */
 const PARAMS = new URLSearchParams(location.search.slice(1) + '&' + location.hash.slice(1));   // paramètres en ?… et en #… (page publiée ; ?rev=… sert de numéro de version des fichiers)
-const FORMAT = (PARAMS.get('format') || 'a5').toLowerCase();
+const FORMAT = (PARAMS.get('format') || (PARAMS.get('deck') === 'aic' ? 'mini' : 'a5')).toLowerCase();   // mini = format du mini-deck AIC, 11,5 x 17,3 cm
 const V = +(PARAMS.get('v') || 3);            // 3 = visuel pièce maîtresse (par défaut), 2 = recto épuré, 1 = première version
 const ONLY = PARAMS.get('only');               // numéro d'une seule fiche
 const BLEED = PARAMS.get('bleed') === '1';     // fond perdu de 3 mm pour l'imprimeur
@@ -258,7 +258,7 @@ function board(host, W, H, fam, T = 1) {
       const P = PERSOS[pose]; if (!P) console.error(`pose de personnage inconnue « ${pose} » (voir assets/persos/banque.js)`);
       const w = h * (P ? P.ratio : .7), x0 = o.flip ? x + w / 2 : x - w / 2;
       if (P && P.ready) {
-        const im = NS('image', { href: `assets/persos/${pose}.png`, x: x - w / 2, y: y - h, width: w, height: h, preserveAspectRatio: 'xMidYMax meet' }, svg);
+        const im = NS('image', { href: `assets/${PARAMS.get('legers') ? 'persos-legers' : 'persos'}/${pose}.png`,   /* ?legers=1 : images réduites, pour un PDF léger */ x: x - w / 2, y: y - h, width: w, height: h, preserveAspectRatio: 'xMidYMax meet' }, svg);
         if (o.flip) im.setAttribute('transform', `translate(${2 * x} 0) scale(-1 1)`);
         return im;
       }
@@ -1232,8 +1232,9 @@ function checkOverflowX() {
 function renderDeck(list) {
   document.body.classList.add(FORMAT);
   if (BLEED) document.body.classList.add('bleed');
+  if (PARAMS.get('legers')) document.body.classList.add('legers');   // PDF léger : sans texture papier (sinon une image pleine page par page)
   if (PARAMS.get('tint')) document.body.style.setProperty('--tint', PARAMS.get('tint') + '%');
-  const PAGE = FORMAT === 'a6' ? [105, 148] : [148, 210];
+  const PAGE = FORMAT === 'a6' ? [105, 148] : FORMAT === 'mini' ? [115, 173] : [148, 210];
   document.head.insertAdjacentHTML('beforeend', `<style>@page{size:${PAGE[0] + (BLEED ? 6 : 0)}mm ${PAGE[1] + (BLEED ? 6 : 0)}mm;margin:0}</style>`);
   const root = document.getElementById('deck');
   const sheets = [], files = [], css = new Set();

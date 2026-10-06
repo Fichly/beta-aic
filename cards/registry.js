@@ -211,14 +211,15 @@ const REG = {
  },
  "aic-15b": {
   "deck": "aic",
-  "order": 15.5,
-  "num": 15,
-  "name": "Tableau du TOP 5",
+  "order": 17,
+  "num": 17,
+  "name": "Tableaux du TOP 5 et du TOP 15",
   "fam": 1,
   "section": "AIC · Déployer",
   "file": "cards/aic/aic-15b.js",
   "pages": [
-   38
+   38,
+   40
   ],
   "kind": "libre"
  },
@@ -235,23 +236,10 @@ const REG = {
   ],
   "kind": "outil"
  },
- "aic-16b": {
-  "deck": "aic",
-  "order": 16.5,
-  "num": 16,
-  "name": "Tableau du TOP 15",
-  "fam": 1,
-  "section": "AIC · Déployer",
-  "file": "cards/aic/aic-16b.js",
-  "pages": [
-   40
-  ],
-  "kind": "libre"
- },
  "aic-17": {
   "deck": "aic",
-  "order": 17,
-  "num": 17,
+  "order": 18,
+  "num": 18,
   "name": "TOP 60 direction",
   "fam": 1,
   "section": "AIC · Déployer",
@@ -261,23 +249,10 @@ const REG = {
   ],
   "kind": "outil"
  },
- "aic-17b": {
-  "deck": "aic",
-  "order": 17.5,
-  "num": 17,
-  "name": "Tableau du TOP 60",
-  "fam": 1,
-  "section": "AIC · Déployer",
-  "file": "cards/aic/aic-17b.js",
-  "pages": [
-   42
-  ],
-  "kind": "libre"
- },
  "aic-18": {
   "deck": "aic",
-  "order": 18,
-  "num": 18,
+  "order": 19,
+  "num": 19,
   "name": "Plan d’action",
   "fam": 1,
   "section": "AIC · Déployer",
@@ -290,8 +265,8 @@ const REG = {
  },
  "aic-19": {
   "deck": "aic",
-  "order": 19,
-  "num": 19,
+  "order": 20,
+  "num": 20,
   "name": "Bonne posture",
   "fam": 1,
   "section": "AIC · Déployer",
@@ -304,8 +279,8 @@ const REG = {
  },
  "aic-20": {
   "deck": "aic",
-  "order": 20,
-  "num": 20,
+  "order": 21,
+  "num": 21,
   "name": "Obeya stratégie",
   "fam": 3,
   "section": "AIC · Ancrer et étendre",
@@ -318,8 +293,8 @@ const REG = {
  },
  "aic-21": {
   "deck": "aic",
-  "order": 21,
-  "num": 21,
+  "order": 22,
+  "num": 22,
   "name": "Fonctions office",
   "fam": 3,
   "section": "AIC · Ancrer et étendre",
@@ -331,8 +306,8 @@ const REG = {
  },
  "aic-21b": {
   "deck": "aic",
-  "order": 21.5,
-  "num": 21,
+  "order": 22.5,
+  "num": 22,
   "name": "Obeya RH",
   "fam": 3,
   "section": "AIC · Ancrer et étendre",
@@ -344,8 +319,8 @@ const REG = {
  },
  "aic-22": {
   "deck": "aic",
-  "order": 22,
-  "num": 22,
+  "order": 23,
+  "num": 23,
   "name": "Digitaliser",
   "fam": 3,
   "section": "AIC · Ancrer et étendre",
@@ -358,8 +333,8 @@ const REG = {
  },
  "aic-23": {
   "deck": "aic",
-  "order": 23,
-  "num": 23,
+  "order": 24,
+  "num": 24,
   "name": "10 indicateurs",
   "fam": 5,
   "section": "AIC · Glossaire",
@@ -372,8 +347,8 @@ const REG = {
  },
  "aic-24": {
   "deck": "aic",
-  "order": 24,
-  "num": 24,
+  "order": 25,
+  "num": 25,
   "name": "Justifier les AIC",
   "fam": 5,
   "section": "AIC · Glossaire",

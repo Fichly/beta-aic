@@ -189,6 +189,11 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 .gate [hidden]{display:none!important}
 .brand{display:flex;align-items:center;gap:10px}
 .brand img{height:26px;width:auto}
+.pdfl{font-weight:700;color:var(--accent);margin-left:10px}
+.gate .check a,.gate .lost a{color:var(--accent);font-weight:700}
+.gate .lost{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.gate .lost .row{display:flex;gap:8px;flex-wrap:wrap}
+.gate .lost input{flex:1;min-width:180px}
 @media (max-width:820px){.notes-f{position:static;box-shadow:none}}   /* enregistrement automatique : rien à garder collé en bas */
 @media (max-width:820px){.avis textarea,.gate input[type=text],.gate input[type=email]{font-size:16px}}   /* Safari iOS zoome sur un champ de moins de 16 px */
 </style>
@@ -202,7 +207,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
     <button type="button" data-deck="aic" aria-pressed="false">AIC et Obeya</button>
   </div>
   <button type="button" class="helpbtn" id="help" hidden>Mode d’emploi</button>
-  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><button type="button" id="logout">Se déconnecter</button></div>
+  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><a id="pdfLink" class="pdfl" target="_blank" rel="noopener">Télécharger les fiches (PDF)</a><button type="button" id="logout">Se déconnecter</button></div>
   <div class="progress" hidden><span id="count"></span><div class="bar" aria-hidden="true"><i id="barfill"></i></div></div>
 </header>
 <aside class="cards">
@@ -217,6 +222,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
         <li>Ouvrez les cartes une à une dans la liste.</li>
         <li>Annotez ce qui vous gêne ou vous plaît : <b>Note</b> (touchez ou cliquez l’endroit), <b>Entourer</b>, <b>Flèche</b> ou <b>Crayon</b> (faites glisser le doigt ou la souris), puis écrivez votre commentaire.</li>
         <li>Chaque commentaire est <b>enregistré automatiquement</b>. Revenez quand vous voulez, sur n’importe quel appareil, avec votre code personnel.</li>
+        <li>Les fiches sont aussi téléchargeables en PDF (lien en haut de page), pour vous seul·e : voir le <a href="contrat-beta-aic.html" target="_blank" rel="noopener">contrat de bêta-test</a>.</li>
       </ol>
       <div class="codebox" id="codebox" hidden>Votre code personnel : <b id="codeShow"></b><button type="button" class="btn" id="codeCopy">Copier</button><span>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</span></div>
     </div>
@@ -283,16 +289,19 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
       <label>Nom <input type="text" id="fNom" autocomplete="family-name" maxlength="80"></label>
       <label>E-mail <input type="email" id="fEmail" autocomplete="email" maxlength="200"></label>
       <label>Fonction et entreprise <span class="opt">(facultatif)</span><input type="text" id="fFonction" autocomplete="organization-title" maxlength="200" placeholder="Ex. : responsable de production chez…"></label>
-      <label class="check"><input type="checkbox" id="fAccord"><span>J’accepte que Fichly utilise mes commentaires pour améliorer le mini-deck.</span></label>
+      <label class="check"><input type="checkbox" id="fAccord"><span>J’ai lu et j’accepte le <a href="contrat-beta-aic.html" target="_blank" rel="noopener">contrat de bêta-test</a> : contenu confidentiel, 3 semaines pour donner mes retours, mini-deck offert aux testeurs actifs.</span></label>
     </div>
     <div id="gCode" style="display:grid;gap:10px" hidden>
       <p>Entrez le code personnel reçu à votre inscription.</p>
       <label>Code personnel <input id="codeInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex. : K7P4QM9X"></label>
+      <div class="lost"><b>Code perdu ?</b><span>Recevez-le à l’adresse e-mail de votre inscription.</span>
+        <div class="row"><input type="email" id="lostEmail" autocomplete="email" placeholder="Votre adresse e-mail"><button type="button" class="btn" id="lostGo">Recevoir mon code</button></div>
+        <span id="lostInfo" role="status"></span></div>
     </div>
     <div id="gDone" style="display:grid;gap:10px" hidden>
       <p>Bienvenue <b id="doneName"></b> ! Voici votre code personnel :</p>
       <div class="bigcode" id="doneCode" role="status"></div>
-      <p>Notez-le : il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</p>
+      <p>Nous venons aussi de vous l’envoyer par e-mail (pensez à regarder dans les indésirables). Il vous permet de revenir à vos commentaires, sur n’importe quel appareil.</p>
       <button type="button" class="btn" id="doneCopy">Copier le code</button>
     </div>
     <div class="err" id="gateErr" role="alert"></div>
@@ -300,7 +309,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
   </form>
 </div>
 
-<script src="cards/registry.js?rev=b6dd139f"></script>
+<script src="cards/registry.js?rev=017aeb53"></script>
 <script>
 /* Réglages de la page : decks montrés, origine des retours (le formulaire la reçoit), mode bêta (mode d'emploi) */
 const CONF = { decks: ['aic'], source: 'beta', beta: true, titre: 'Bêta · Mini-deck AIC et Obeya' };
@@ -370,7 +379,7 @@ function show(hash, label) {
   frame = document.createElement('iframe');
   frame.className = 'frame'; frame.title = label;
   frame.style.width = (matchMedia('(max-width:820px)').matches ? 620 : 1200) + 'px'; frame.style.height = '900px';   // téléphone : recto et verso l'un sous l'autre
-  frame.src = 'deck.html?rev=d199f133#' + hash + '&t=' + Date.now();
+  frame.src = 'deck.html?rev=16ac5d44#' + hash + '&t=' + Date.now();
   stage.appendChild(frame);
   const alerts = document.createElement('div'); alerts.className = 'alerts'; alerts.innerHTML = CONF.beta ? '<h3>Chargement de la carte…</h3>' : '<h3>Rendu en cours…</h3>';
   const fail = () => { clearInterval(poll); alerts.className = 'alerts ko'; alerts.innerHTML = '<h3>La carte ne s’est pas affichée</h3><p>Vérifiez votre connexion, puis cliquez sur « Recharger ».</p>'; };
@@ -898,6 +907,7 @@ async function enter(code, prenom) {
   CODE = code; KEY = 'fichly-beta-aic-v2-' + code;   // v2 : la copie locale ne contient plus que ce qui attend d'être enregistré
   lsSet('fichly-code', code);
   $('whoCode').textContent = code; $('hello').textContent = prenom ? `Bonjour ${prenom}` : ''; $('who').hidden = false;
+  $('pdfLink').href = SB.url + '/functions/v1/pdf-aic?code=' + encodeURIComponent(code);   // PDF des fiches, vérifié avec le code
   $('gate').hidden = true;
   cartesOk = false;
   setStatus('Chargement de vos cartes et de vos commentaires…');
@@ -963,7 +973,7 @@ $('gateForm').addEventListener('submit', async e => {
     const P = { p_prenom: $('fPrenom').value.trim(), p_nom: $('fNom').value.trim(), p_email: $('fEmail').value.trim(), p_fonction: $('fFonction').value.trim(), p_accord: $('fAccord').checked };
     if (!P.p_prenom || !P.p_nom) { err.textContent = 'Indiquez votre prénom et votre nom.'; return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(P.p_email)) { err.textContent = 'Indiquez une adresse e-mail valide.'; return; }
-    if (!P.p_accord) { err.textContent = 'Cochez la case d’accord pour participer à la bêta.'; return; }
+    if (!P.p_accord) { err.textContent = 'Cochez la case d’acceptation du contrat de bêta-test pour participer.'; return; }
     const code = await rpc('inscrire', P);
     doneInfo = { code, prenom: P.p_prenom };
     lsSet('fichly-code', code);
@@ -973,6 +983,7 @@ $('gateForm').addEventListener('submit', async e => {
   } catch (ex) {
     err.textContent = ex.code === 'deja_inscrit' ? 'Cette adresse e-mail est déjà inscrite : utilisez votre code (onglet « J’ai mon code »). Code perdu ? Écrivez à contact@fichly.com.'
       : ex.code === 'complet' ? 'La bêta est complète. Merci de votre intérêt !'
+      : ex.code === 'accord_requis' ? 'Cochez la case d’acceptation du contrat de bêta-test pour participer.'
       : ex.code === 'patientez' ? 'Beaucoup d’inscriptions depuis votre connexion en ce moment : réessayez dans quelques minutes.'
       : 'Connexion impossible pour le moment. Vérifiez votre connexion Internet et réessayez.';
   } finally { go.disabled = false; }
@@ -981,6 +992,15 @@ $('doneCopy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(doneInfo.code); $('doneCopy').textContent = 'Code copié'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('doneCode')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
 });
 $('logout').addEventListener('click', () => { logout(); askCode(); });
+$('lostEmail').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('lostGo').click(); } });   // Entrée ne valide pas le formulaire du code
+$('lostGo').addEventListener('click', async () => {
+  const em = $('lostEmail').value.trim(), info = $('lostInfo');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { info.textContent = 'Indiquez l’adresse e-mail utilisée à l’inscription.'; return; }
+  $('lostGo').disabled = true;
+  try { await rpc('renvoyer_code', { p_email: em }); info.textContent = 'Si cette adresse est inscrite, votre code vient de lui être envoyé. Regardez aussi dans les indésirables.'; }
+  catch (e) { info.textContent = 'Envoi impossible pour le moment. Vérifiez votre connexion et réessayez.'; }
+  $('lostGo').disabled = false;
+});
 // Dernier mot : enregistré tout seul après une pause de frappe, gardé sur l'appareil tant qu'il n'est pas confirmé
 function avisEtat() { const v = $('avisText').value.trim(); $('avisInfo').textContent = !CODE ? '' : v === avisSauve ? (v ? '✓ Enregistré' : '') : 'Non enregistré'; }
 async function sauverAvis() {

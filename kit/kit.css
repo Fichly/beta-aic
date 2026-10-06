@@ -21,6 +21,7 @@ body{background:#cfcabd;font-family:'Poppins',sans-serif;color:var(--ink);-webki
 .page::after{content:'';position:absolute;inset:0;background:url(../assets/paper.png) center/cover;mix-blend-mode:multiply;filter:grayscale(1) brightness(1.06);opacity:.28;pointer-events:none;z-index:50}
 body.papier .page,body.papier .sheet{--bg:var(--paper);--line:#d9cfb5}
 body.papier .page::after{filter:none;opacity:.5}
+body.legers .page::after{display:none}
 b,strong{font-weight:700}
 sup{font-size:.62em;line-height:0;vertical-align:.55em}
 p{margin:0}
@@ -241,6 +242,11 @@ body.bleed.a6 .band-l{height:calc(13mm + var(--bl))}
 body.bleed .strip{left:calc(-1 * var(--bl));right:calc(-1 * var(--bl));bottom:calc(-1 * var(--bl));height:calc(4.2mm + var(--bl));border-left:var(--bl) solid #f16969;border-right:var(--bl) solid #74a3d6}
 body.bleed .strip i{height:calc(2.8mm + var(--bl))}
 body.bleed .strip i.on{height:calc(4.2mm + var(--bl))}
+
+/* ---------- mini-deck AIC : 11,5 x 17,3 cm (page dessinée à 148 mm de large puis réduite) ---------- */
+body.mini{--s:.777027}
+body.mini .sheet{width:115mm;height:173mm}
+body.mini .page{width:calc(115mm / var(--s));height:calc(173mm / var(--s));transform:scale(var(--s))}
 
 /* ---------- A6 ---------- */
 body.a6{--s:.87}
