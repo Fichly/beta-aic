@@ -314,9 +314,14 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 </div>
 
 <div class="gate finModal" id="finModal" hidden role="dialog" aria-modal="true" aria-labelledby="finTitle">
-  <form id="finForm" style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px" novalidate>
-    <h2 id="finTitle" style="margin:0;font-size:18px">Recevoir le mini-deck chez vous</h2>
-    <p style="margin:0;color:var(--muted);font-size:13.5px">Merci d’avoir terminé vos retours ! Indiquez où nous pouvons vous envoyer l’exemplaire physique du mini-deck.</p>
+  <div id="finStep1" style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px">
+    <h2 id="finTitle" style="margin:0;font-size:18px">Bravo, vous avez terminé !</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px">Merci d’avoir pris le temps de tester le mini-deck AIC et Obeya : vos retours nous sont très précieux. Pour vous en remercier, Fichly vous offre un exemplaire physique du mini-deck. Il ne nous manque que votre adresse pour vous l’envoyer.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" id="finLater">Plus tard</button><button type="button" class="btn primary" id="finContinue">Indiquer mon adresse</button></div>
+  </div>
+  <form id="finForm" hidden style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px" novalidate>
+    <h2 style="margin:0;font-size:18px">Votre adresse de livraison</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px">Pour vous envoyer l’exemplaire physique du mini-deck.</p>
     <label>Adresse <input type="text" id="fAdr1" autocomplete="address-line1" maxlength="200"></label>
     <label>Complément <span class="opt">(bâtiment, étage…)</span><input type="text" id="fAdr2" autocomplete="address-line2" maxlength="200"></label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -907,7 +912,11 @@ $('finBtn').addEventListener('click', async () => {
     catch (e) { $('finInfo').textContent = 'Connexion impossible : réessayez dans un instant.'; }
     b.disabled = false; majFin(); return;
   }
-  $('finErr').textContent = ''; $('finModal').hidden = false; setInert(true);
+  $('finErr').textContent = ''; $('finStep1').hidden = false; $('finForm').hidden = true; $('finModal').hidden = false; setInert(true);
+});
+$('finLater').addEventListener('click', () => { $('finModal').hidden = true; setInert(false); });
+$('finContinue').addEventListener('click', () => {
+  $('finStep1').hidden = true; $('finForm').hidden = false;
   setTimeout(() => { if (!TOUCH) $('fAdr1').focus(); }, 50);
 });
 $('finCancel').addEventListener('click', () => { $('finModal').hidden = true; setInert(false); });
