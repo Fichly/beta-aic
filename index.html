@@ -189,9 +189,10 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 .gate [hidden]{display:none!important}
 .brand{display:flex;align-items:center;gap:10px}
 .brand img{height:26px;width:auto}
-.pdfl{font-weight:700;color:var(--accent);margin-left:10px}
-#finBtn{background:none;border:0;padding:0;margin-left:14px;color:var(--accent);font:700 14px var(--sans);cursor:pointer;text-decoration:underline}
-.finInfo{display:block;width:100%;font:600 13px var(--sans);color:var(--ok)}
+.who .chunk,.who a,.who button{white-space:nowrap}
+.pdfl{font-weight:700;color:var(--accent)}
+.finInfo{display:none;color:var(--ok)}
+.finInfo:not(:empty){display:block;width:100%;margin-top:2px;font:600 13px var(--sans)}
 .gate .check a,.gate .lost a{color:var(--accent);font-weight:700}
 .gate .lost{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
 .gate .lost .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -209,7 +210,7 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
     <button type="button" data-deck="aic" aria-pressed="false">AIC et Obeya</button>
   </div>
   <button type="button" class="helpbtn" id="help" hidden>Mode d’emploi</button>
-  <div class="who" id="who" hidden><span id="hello"></span> · code <b id="whoCode"></b><a id="pdfLink" class="pdfl" target="_blank" rel="noopener">Télécharger les fiches (PDF)</a><button type="button" id="finBtn" aria-pressed="false">J’ai terminé</button><span id="finInfo" class="finInfo" role="status"></span><button type="button" id="logout">Se déconnecter</button></div>
+  <div class="who" id="who" hidden><span class="chunk" id="hello"></span><span class="chunk">· code <b id="whoCode"></b></span><a id="pdfLink" class="pdfl chunk" target="_blank" rel="noopener">Télécharger les fiches (PDF)</a><button type="button" id="finBtn" class="chunk" aria-pressed="false">J’ai terminé</button><button type="button" id="logout" class="chunk">Se déconnecter</button><span id="finInfo" class="finInfo" role="status"></span></div>
   <div class="progress" hidden><span id="count"></span><div class="bar" aria-hidden="true"><i id="barfill"></i></div></div>
 </header>
 <aside class="cards">
