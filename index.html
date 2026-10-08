@@ -193,6 +193,16 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 .pdfl{font-weight:700;color:var(--accent)}
 .finInfo{display:none;color:var(--ok)}
 .finInfo:not(:empty){display:block;width:100%;margin-top:2px;font:600 13px var(--sans)}
+.finModal{background:rgba(7,18,70,.52);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .22s ease}
+.finModal.show{opacity:1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .finModal{background:rgba(2,4,20,.6)}}
+:root[data-theme="dark"] .finModal{background:rgba(2,4,20,.6)}
+.finCard{position:relative;overflow:visible;transform:translateY(14px) scale(.96);opacity:0;transition:transform .32s cubic-bezier(.22,1,.36,1),opacity .28s ease}
+.finModal.show .finCard{transform:none;opacity:1}
+.confetti{position:absolute;inset:0;overflow:visible;pointer-events:none}
+.confetti span{position:absolute;top:30%;left:50%;width:7px;height:7px;border-radius:2px;opacity:0;animation:confetti-pop .85s cubic-bezier(.17,.67,.35,1) forwards}
+@keyframes confetti-pop{0%{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(.5)}100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(var(--r)) scale(1)}}
+@media (prefers-reduced-motion:reduce){.finModal,.finCard,.confetti span{transition:none!important;animation:none!important;opacity:1!important;transform:none!important}}
 .gate .check a,.gate .lost a{color:var(--accent);font-weight:700}
 .gate .lost{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
 .gate .lost .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -314,12 +324,13 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
 </div>
 
 <div class="gate finModal" id="finModal" hidden role="dialog" aria-modal="true" aria-labelledby="finTitle">
-  <div id="finStep1" style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px">
+  <div id="finStep1" class="finCard" style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px">
+    <div class="confetti" id="finConfetti" aria-hidden="true"></div>
     <h2 id="finTitle" style="margin:0;font-size:18px">Bravo, vous avez terminé !</h2>
     <p style="margin:0;color:var(--muted);font-size:13.5px">Merci d’avoir pris le temps de tester le mini-deck AIC et Obeya : vos retours nous sont très précieux. Pour vous en remercier, Fichly vous offre un exemplaire physique du mini-deck. Il ne nous manque que votre adresse pour vous l’envoyer.</p>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" id="finLater">Plus tard</button><button type="button" class="btn primary" id="finContinue">Indiquer mon adresse</button></div>
   </div>
-  <form id="finForm" hidden style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px" novalidate>
+  <form id="finForm" class="finCard" hidden style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px" novalidate>
     <h2 style="margin:0;font-size:18px">Votre adresse de livraison</h2>
     <p style="margin:0;color:var(--muted);font-size:13.5px">Pour vous envoyer l’exemplaire physique du mini-deck.</p>
     <label>Adresse <input type="text" id="fAdr1" autocomplete="address-line1" maxlength="200"></label>
@@ -896,6 +907,31 @@ function renderSend() {
   box.className = 'sync' + (syncErr ? ' ko' : waiting ? ' wait' : '');
   box.textContent = syncErr ? syncErr : !cartesOk && CODE ? 'Chargement de vos commentaires…' : waiting ? `Enregistrement de ${waiting} commentaire${waiting > 1 ? 's' : ''}…` : (ANN.length ? `✓ ${ANN.length} commentaire${ANN.length > 1 ? 's' : ''} enregistré${ANN.length > 1 ? 's' : ''}` : '✓ Enregistrement automatique');
 }
+// Petit feu d'artifice de confettis à l'ouverture de l'écran de remerciement
+const CONFETTI_COLORS = ['#3d449b', '#2a6b42', '#d93b42', '#e0a62a', '#1f8fd9'];
+function tirerConfettis(hote) {
+  if (!hote) return;
+  hote.innerHTML = '';
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('span');
+    const angle = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 70;
+    p.style.setProperty('--x', Math.round(Math.cos(angle) * dist) + 'px');
+    p.style.setProperty('--y', Math.round(Math.sin(angle) * dist - 30) + 'px');
+    p.style.setProperty('--r', Math.round(Math.random() * 360) + 'deg');
+    p.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
+    p.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    hote.appendChild(p);
+  }
+}
+// Transition douce du popup « J'ai terminé » (fondu + léger zoom), au-dessus de l'interface sans la masquer
+function finOuvrir() {
+  $('finModal').hidden = false;
+  requestAnimationFrame(() => { $('finModal').classList.add('show'); tirerConfettis($('finConfetti')); });
+}
+function finFermer() {
+  $('finModal').classList.remove('show');
+  setTimeout(() => { $('finModal').hidden = true; }, 260);
+}
 // « J’ai terminé » : le testeur ne reçoit plus les rappels par e-mail
 let FIN = null;   // date à laquelle le testeur a dit « terminé » (null = pas encore)
 function majFin() {
@@ -912,14 +948,14 @@ $('finBtn').addEventListener('click', async () => {
     catch (e) { $('finInfo').textContent = 'Connexion impossible : réessayez dans un instant.'; }
     b.disabled = false; majFin(); return;
   }
-  $('finErr').textContent = ''; $('finStep1').hidden = false; $('finForm').hidden = true; $('finModal').hidden = false; setInert(true);
+  $('finErr').textContent = ''; $('finStep1').hidden = false; $('finForm').hidden = true; setInert(true); finOuvrir();
 });
-$('finLater').addEventListener('click', () => { $('finModal').hidden = true; setInert(false); });
+$('finLater').addEventListener('click', () => { finFermer(); setInert(false); });
 $('finContinue').addEventListener('click', () => {
   $('finStep1').hidden = true; $('finForm').hidden = false;
   setTimeout(() => { if (!TOUCH) $('fAdr1').focus(); }, 50);
 });
-$('finCancel').addEventListener('click', () => { $('finModal').hidden = true; setInert(false); });
+$('finCancel').addEventListener('click', () => { finFermer(); setInert(false); });
 $('finForm').addEventListener('submit', async e => {
   e.preventDefault();
   const adr1 = $('fAdr1').value.trim(), cp = $('fCp').value.trim(), ville = $('fVille').value.trim();
@@ -930,7 +966,7 @@ $('finForm').addEventListener('submit', async e => {
       p_code: CODE, p_adresse1: adr1, p_adresse2: $('fAdr2').value.trim(), p_code_postal: cp, p_ville: ville,
       p_pays: $('fPays').value.trim(), p_telephone: $('fTel').value.trim(),
     })) || null;
-    $('finModal').hidden = true; setInert(false); majFin();
+    finFermer(); setInert(false); majFin();
   } catch (ex) { $('finErr').textContent = 'Connexion impossible : réessayez dans un instant.'; }
   btn.disabled = false;
 });
