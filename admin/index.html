@@ -663,9 +663,7 @@ setInterval(() => { if (!document.hidden) load(); }, 120000);
 async function start() {
   initTSel();
   render();
-  CODE = sessionStorage.getItem('admin-code') || '';
-  if (!CODE) CODE = (prompt('Code admin de la validation (fourni par Hugo) :') || '').trim();
-  if (!CODE) { $('title').textContent = 'Accès réservé'; showMsg('Code admin requis : rechargez la page pour réessayer.', true); return; }
+  CODE = '33CA04E83BFDE34790E574A012DCBD69';   // ouverte sans demande de code, à la demande de Hugo (8 octobre 2026) ; ADMIN_CODE dans supabase.json
   load();
 }
 start();
