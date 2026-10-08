@@ -313,6 +313,25 @@ aside.notes{background:var(--panel);border-left:1px solid var(--line);display:gr
   </form>
 </div>
 
+<div class="gate finModal" id="finModal" hidden role="dialog" aria-modal="true" aria-labelledby="finTitle">
+  <form id="finForm" style="width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:12px" novalidate>
+    <h2 id="finTitle" style="margin:0;font-size:18px">Recevoir le mini-deck chez vous</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px">Merci d’avoir terminé vos retours ! Indiquez où nous pouvons vous envoyer l’exemplaire physique du mini-deck.</p>
+    <label>Adresse <input type="text" id="fAdr1" autocomplete="address-line1" maxlength="200"></label>
+    <label>Complément <span class="opt">(bâtiment, étage…)</span><input type="text" id="fAdr2" autocomplete="address-line2" maxlength="200"></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label>Code postal <input type="text" id="fCp" autocomplete="postal-code" maxlength="20"></label>
+      <label>Ville <input type="text" id="fVille" autocomplete="address-level2" maxlength="120"></label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label>Pays <input type="text" id="fPays" autocomplete="country-name" maxlength="80" value="France"></label>
+      <label>Téléphone <span class="opt">(facultatif)</span><input type="tel" id="fTel" autocomplete="tel" maxlength="40"></label>
+    </div>
+    <div class="err" id="finErr" role="alert"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" id="finCancel">Annuler</button><button type="submit" class="btn primary" id="finSubmit">Valider et recevoir le deck</button></div>
+  </form>
+</div>
+
 <script src="cards/registry.js?rev=fac27115"></script>
 <script>
 /* Réglages de la page : decks montrés, origine des retours (le formulaire la reçoit), mode bêta (mode d'emploi) */
@@ -882,10 +901,29 @@ function majFin() {
 }
 $('finBtn').addEventListener('click', async () => {
   if (!CODE) return;
-  const b = $('finBtn'); b.disabled = true;
-  try { FIN = (await rpc('marquer_termine', { p_code: CODE, p_termine: !FIN })) || null; }
-  catch (e) { $('finInfo').textContent = 'Connexion impossible : réessayez dans un instant.'; b.disabled = false; return; }
-  b.disabled = false; majFin();
+  if (FIN) {   // « Reprendre les retours » : pas besoin de ressaisir l'adresse
+    const b = $('finBtn'); b.disabled = true;
+    try { FIN = (await rpc('marquer_termine', { p_code: CODE, p_termine: false })) || null; }
+    catch (e) { $('finInfo').textContent = 'Connexion impossible : réessayez dans un instant.'; }
+    b.disabled = false; majFin(); return;
+  }
+  $('finErr').textContent = ''; $('finModal').hidden = false; setInert(true);
+  setTimeout(() => { if (!TOUCH) $('fAdr1').focus(); }, 50);
+});
+$('finCancel').addEventListener('click', () => { $('finModal').hidden = true; setInert(false); });
+$('finForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const adr1 = $('fAdr1').value.trim(), cp = $('fCp').value.trim(), ville = $('fVille').value.trim();
+  if (!adr1 || !cp || !ville) { $('finErr').textContent = 'Indiquez au moins l’adresse, le code postal et la ville.'; return; }
+  const btn = $('finSubmit'); btn.disabled = true; $('finErr').textContent = '';
+  try {
+    FIN = (await rpc('marquer_termine_adresse', {
+      p_code: CODE, p_adresse1: adr1, p_adresse2: $('fAdr2').value.trim(), p_code_postal: cp, p_ville: ville,
+      p_pays: $('fPays').value.trim(), p_telephone: $('fTel').value.trim(),
+    })) || null;
+    $('finModal').hidden = true; setInert(false); majFin();
+  } catch (ex) { $('finErr').textContent = 'Connexion impossible : réessayez dans un instant.'; }
+  btn.disabled = false;
 });
 function setInert(on) { document.querySelectorAll('header,aside.cards,main').forEach(e => { e.inert = on; }); }
 // Fusion : état du serveur, puis ce qui attend encore sur cet appareil (ajouts et modifications l'emportent, suppressions retirées).

@@ -347,7 +347,7 @@ async function saveDecision(key, patch, quiet) {
 function showMsg(t, ko) { const m = $('msg'); m.hidden = !t; m.textContent = t || ''; m.className = 'msg' + (ko ? ' ko' : ''); }
 const visible = f => montre(f) && (filter === 'tout' || stay.has(f.key) || statutOf(f) === filter || (filter === 'a-trier' && statutOf(f) === 'a-revoir'));
 function numbers() { const per = {}, n = {}; FB.forEach(f => { const k = f.card || 'general'; per[k] = (per[k] || 0) + 1; n[f.key] = per[k]; }); return n; }
-function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs'; $('tsel').hidden = current === 'testeurs'; renderTSel(); }
+function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs' || current === 'adresses'; $('tsel').hidden = current === 'testeurs' || current === 'adresses'; renderTSel(); }
 function renderStats() {
   const testers = new Set(FB.map(f => f.sid)).size;
   const c = { 'a-trier': 0, retenu: 0, ecarte: 0, 'a-revoir': 0 };
@@ -367,6 +367,8 @@ function renderCards() {
       <span class="counts">${p.t ? `<span class="chip tri" title="${p.t} à trier">${p.t}</span>` : ''}${p.r ? `<span class="chip ret" title="${p.r} retenu(s)">${p.r}</span>` : ''}</span></button>`;
   };
   html += `<button type="button" class="item" data-id="testeurs" aria-current="${current === 'testeurs'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.5-3.6 2.9-5.6 6-5.6s5.5 2 6 5.6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.6.1 4.6 1.9 5.2 5.2"/></svg></span><span></span><span class="counts"><span class="chip">${Object.keys(REGS).length}</span></span></button>`;
+  { const nAdr = Object.values(REGS).filter(r => r.termine && r.adr1).length;
+    html += `<button type="button" class="item${nAdr ? '' : ' vide'}" data-id="adresses" aria-current="${current === 'adresses'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 10l9-6 9 6v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span><span></span><span class="counts">${nAdr ? `<span class="chip ret" title="${nAdr} adresse(s)">${nAdr}</span>` : ''}</span></button>`; }
   html += entry('general', '★', 'Remarques générales', '#3d449b');
   CARDS.forEach(id => {
     const r = REG[id], grp = r.section || '';
@@ -376,7 +378,7 @@ function renderCards() {
   $('cards').innerHTML = html;
   // textes posés en textContent (noms des cartes et des sections)
   const items = $('cards').querySelectorAll('.item'), groups = $('cards').querySelectorAll('.group');
-  items.forEach(b => { b.children[1].textContent = b.dataset.id === 'testeurs' ? 'Testeurs inscrits' : b.dataset.id === 'general' ? 'Remarques générales' : REG[b.dataset.id].name; });
+  items.forEach(b => { b.children[1].textContent = b.dataset.id === 'testeurs' ? 'Testeurs inscrits' : b.dataset.id === 'adresses' ? 'Adresses à envoyer' : b.dataset.id === 'general' ? 'Remarques générales' : REG[b.dataset.id].name; });
   let gi = 0, lastG = null;
   CARDS.forEach(id => { const g = REG[id].section || ''; if (g !== lastG) { groups[gi++].textContent = g.replace(/^AIC · /, ''); lastG = g; } });
 }
@@ -420,10 +422,36 @@ function renderTesters() {
     catch (e) { box.querySelector('#mailInfo').textContent = txt || 'Aucun e-mail.'; }
   };
 }
+// Adresses des testeurs ayant dit « J'ai terminé » et laissé leurs coordonnées, pour l'envoi du mini-deck (export CSV pour Shopify).
+function renderAdresses() {
+  const box = $('list');
+  $('title').textContent = 'Adresses à envoyer';
+  const fin = Object.values(REGS).filter(r => r.termine && r.adr1).sort((a, b) => String(a.termine).localeCompare(String(b.termine)));
+  const sansAdresse = Object.values(REGS).filter(r => r.termine && !r.adr1).length;
+  const fmt = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+  box.innerHTML = `<div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="chip ret">${fin.length} adresse${fin.length > 1 ? 's' : ''} à envoyer</span>${sansAdresse ? `<span class="chip tri">${sansAdresse} terminé(s) sans adresse</span>` : ''}<button type="button" class="btn primary" id="exportCsv"${fin.length ? '' : ' disabled'}>Exporter en CSV (import clients Shopify)</button><span id="csvInfo" class="fresh"></span></div><div class="tablewrap"><table class="testeurs"><thead><tr><th>Testeur</th><th>E-mail</th><th>Téléphone</th><th>Adresse</th><th>Code postal</th><th>Ville</th><th>Pays</th><th>Terminé le</th></tr></thead><tbody></tbody></table></div><p class="none" style="margin-top:10px">Le fichier reprend les colonnes du modèle d'import clients de Shopify (Prénom, Nom, E-mail, Téléphone, adresse par défaut). Vérifiez-le avec le modèle téléchargeable depuis Shopify (Clients → Importer) avant de l'importer.</p>`;
+  const tb = box.querySelector('tbody');
+  fin.forEach(r => {
+    const tr = document.createElement('tr');
+    [[r.prenom, r.nom].filter(Boolean).join(' '), r.email, r.tel, [r.adr1, r.adr2].filter(Boolean).join(' · '), r.cp, r.ville, r.pays || 'France', fmt(r.termine)].forEach(v => { const td = document.createElement('td'); td.textContent = v || ''; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+  if (!fin.length) { const p = document.createElement('p'); p.className = 'none'; p.textContent = 'Aucun testeur n’a encore terminé en laissant son adresse.'; box.appendChild(p); }
+  const csvCell = v => '"' + String(v || '').replace(/"/g, '""') + '"';
+  box.querySelector('#exportCsv').onclick = () => {
+    const header = ['First Name', 'Last Name', 'Email', 'Phone', 'Address1', 'Address2', 'City', 'Zip', 'Country', 'Accepts Email Marketing', 'Tags', 'Note'];
+    const rows = fin.map(r => [r.prenom, r.nom, r.email, r.tel, r.adr1, r.adr2, r.ville, r.cp, r.pays || 'France', 'no', 'beta-aic', `Bêta AIC · code ${r.code}`]);
+    const csv = '﻿' + [header, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `adresses-beta-aic-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    $('csvInfo').textContent = `${fin.length} adresse${fin.length > 1 ? 's' : ''} exportée${fin.length > 1 ? 's' : ''}.`;
+  };
+}
 function renderThumbs() {
   const box = $('thumbs');
-  $('work').classList.toggle('wide', current === 'testeurs');
-  if (current === 'testeurs') { box.innerHTML = ''; return; }
+  $('work').classList.toggle('wide', current === 'testeurs' || current === 'adresses');
+  if (current === 'testeurs' || current === 'adresses') { box.innerHTML = ''; return; }
   if (current === 'general') { box.innerHTML = '<p class="none">Remarques générales : le « dernier mot » de chaque testeur sur le mini-deck.</p>'; return; }
   const r = REG[current], nums = numbers(), mine = FB.filter(f => f.card === current && visible(f));
   const nPages = r.kind === 'outil' || (r.pages || []).length >= 2 ? 2 : 1;
@@ -437,8 +465,9 @@ $('list').addEventListener('pointerdown', () => { listBusy = true; });
 document.addEventListener('pointerup', () => { if (!listBusy) return; setTimeout(() => { listBusy = false; if (listWanted) { listWanted = false; renderList(); } }, 0); });
 document.addEventListener('pointercancel', () => { listBusy = false; });
 function renderList() {
-  if (listBusy && current !== 'testeurs') { listWanted = true; return; }
+  if (listBusy && current !== 'testeurs' && current !== 'adresses') { listWanted = true; return; }
   if (current === 'testeurs') return renderTesters();
+  if (current === 'adresses') return renderAdresses();
   const box = $('list'), nums = numbers();
   const act = document.activeElement, typing = act && act.tagName === 'TEXTAREA' && act.closest('.fb') ? { key: act.closest('.fb').dataset.key, value: act.value, a: act.selectionStart, b: act.selectionEnd } : null;
   const mine = FB.filter(f => montre(f) && (current === 'general' ? f.card === null : f.card === current));
@@ -498,7 +527,7 @@ $('cards').addEventListener('click', e => { const b = e.target.closest('.item');
 $('filter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; stay.clear(); $('filter').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); render(); });
 
 document.addEventListener('keydown', e => {
-  if (e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || current === 'testeurs') return;
+  if (e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || current === 'testeurs' || current === 'adresses') return;
   const els = [...document.querySelectorAll('#list .fb')]; if (!els.length) return;
   let i = els.findIndex(x => x.dataset.key === selected);
   const k = e.key.toLowerCase();
@@ -624,7 +653,8 @@ function rowsOf(result) {   // le connecteur renvoie le JSON entre des balises d
 }
 function ingest(data) {
   const regs = {};
-  (data.testeurs || []).forEach(t => { regs[up(t.code)] = { code: up(t.code), prenom: t.prenom || '', nom: t.nom || '', email: t.email || '', fonction: t.fonction || '', date: t.created_at || '', vu: t.last_seen || '' }; });
+  (data.testeurs || []).forEach(t => { regs[up(t.code)] = { code: up(t.code), prenom: t.prenom || '', nom: t.nom || '', email: t.email || '', fonction: t.fonction || '', date: t.created_at || '', vu: t.last_seen || '',
+    termine: t.termine_le || '', adr1: t.adresse1 || '', adr2: t.adresse2 || '', cp: t.code_postal || '', ville: t.ville || '', pays: t.pays || '', tel: t.telephone || '' }; });
   REGS = regs; regsOk = true;
   const okGeo = (t, g) => g && typeof g === 'object' && (t === 'note' ? [g.x, g.y].every(Number.isFinite) : t === 'crayon' ? Array.isArray(g.pts) && g.pts.every(p => Array.isArray(p) && p.every(Number.isFinite)) : [g.x1, g.y1, g.x2, g.y2].every(Number.isFinite));
   let bad = 0;
