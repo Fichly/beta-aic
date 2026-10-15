@@ -35,6 +35,7 @@ header h1{font-size:16px;font-weight:800;margin:0;text-wrap:balance}
 .chip.tri{background:var(--waitbg);color:var(--wait)}
 .chip.ret{background:var(--okbg);color:var(--ok)}
 .chip.eca{background:var(--offbg);color:var(--off)}
+.chip.neg{background:var(--kobg);color:var(--ko)}
 .head-r{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .fresh{font-size:12px;color:var(--muted)}
 .btn{font:600 12.5px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 12px;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
@@ -104,6 +105,24 @@ table.testeurs th,table.testeurs td{text-align:left;padding:8px 10px;border-bott
 table.testeurs th{font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
 .inconnu{color:var(--ko);font-weight:600}
+.resume-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px;background:var(--panel)}
+.resume-card summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 12px;font:700 13px var(--sans)}
+.resume-card summary::-webkit-details-marker{display:none}
+.resume-card summary:before{content:'\25B8';color:var(--muted)}
+.resume-card[open] summary:before{content:'\25BE'}
+.resume-card .items{border-top:1px solid var(--line);padding:0 12px}
+.ritem{display:grid;grid-template-columns:12px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ritem:last-child{border-bottom:0}
+.ritem .dot{width:9px;height:9px;border-radius:50%;margin-top:5px;background:var(--line)}
+.ritem .dot.neg{background:var(--ko)}
+.ritem .dot.pos{background:var(--ok)}
+.ritem .meta{font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;margin-bottom:2px}
+.ritem .meta b{color:var(--ink)}
+.ritem .st{font-weight:700;padding:1px 7px;border-radius:99px;font-size:10.5px}
+.ritem .st.retenu{color:var(--ok);background:var(--okbg)}
+.ritem .st.ecarte{color:var(--off);background:var(--offbg)}
+.ritem .st.a-revoir{color:var(--wait);background:var(--waitbg)}
+.ritem .st.a-trier{color:var(--muted);background:var(--bg)}
 .msg.ko{background:var(--kobg);color:var(--ko)}
 @media (max-width:1100px){.work{grid-template-columns:minmax(0,1fr)}.list{border-left:0;border-top:1px solid var(--line)}}
 @media (max-width:820px){
@@ -220,9 +239,18 @@ const COLORS = ['#e5484d', '#2563eb', '#16a34a'];
 const TYPES = { n: 'note', c: 'cercle', f: 'fleche', d: 'crayon' };
 const TLABEL = { note: 'Note', cercle: 'Zone entourée', fleche: 'Flèche', crayon: 'Tracé', general: 'Remarque générale' };
 const STATUTS = [['retenu', 'Retenir'], ['ecarte', 'Écarter'], ['a-revoir', 'À revoir']];
+// Repère automatique et approximatif (mots-clés), affiché dans le résumé pour prioriser la lecture : jamais une vérité.
+const normMot = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const MOTS_NEG = ['erreur', 'faute', 'coquille', 'bug', 'incomprehensible', 'confus', 'manque', 'incomplet', 'incorrect', 'flou', 'pas clair', 'difficile', 'complique', 'trop long', 'trop dense', 'redondant', 'doublon', 'illisible', 'trop petit', 'chevauche', 'decale', 'probleme', 'corriger', 'genant', 'dommage', 'mauvais', 'faux', 'bizarre', 'perdu', 'lourd', 'surcharge'].map(normMot);
+const MOTS_POS = ['bien', 'super', 'parfait', 'clair', 'genial', 'excellent', 'jaime', 'utile', 'pertinent', 'efficace', 'agreable', 'intuitif', 'nickel', 'top', 'bravo', 'adore', 'impeccable', 'rien a redire'].map(normMot);
+function tonDe(texte) {
+  const t = ' ' + normMot(texte) + ' ';
+  const neg = MOTS_NEG.some(m => t.includes(' ' + m)), pos = MOTS_POS.some(m => t.includes(' ' + m));
+  return neg && !pos ? 'neg' : pos && !neg ? 'pos' : 'neutre';
+}
 const $ = id => document.getElementById(id);
 const CARDS = Object.keys(REG).filter(k => REG[k].deck === 'aic').sort((a, b) => REG[a].order - REG[b].order);
-let allShapes = false, FB = [], REGS = {}, regsOk = false, DEC = {}, SAVED = {}, current = CARDS[0], filter = 'a-trier', selected = null;
+let allShapes = false, FB = [], REGS = {}, regsOk = false, DEC = {}, SAVED = {}, current = 'resume', filter = 'a-trier', selected = null;
 const stay = new Set();   // retours traités pendant cette vue : ils restent affichés jusqu'au changement de carte ou de filtre
 
 /* ---------- Lecture des réponses Tally ---------- */
@@ -347,7 +375,7 @@ async function saveDecision(key, patch, quiet) {
 function showMsg(t, ko) { const m = $('msg'); m.hidden = !t; m.textContent = t || ''; m.className = 'msg' + (ko ? ' ko' : ''); }
 const visible = f => montre(f) && (filter === 'tout' || stay.has(f.key) || statutOf(f) === filter || (filter === 'a-trier' && statutOf(f) === 'a-revoir'));
 function numbers() { const per = {}, n = {}; FB.forEach(f => { const k = f.card || 'general'; per[k] = (per[k] || 0) + 1; n[f.key] = per[k]; }); return n; }
-function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs' || current === 'adresses'; $('tsel').hidden = current === 'testeurs' || current === 'adresses'; renderTSel(); }
+function render() { renderStats(); renderCards(); renderThumbs(); renderList(); $('filter').hidden = current === 'testeurs' || current === 'adresses' || current === 'resume'; $('tsel').hidden = current === 'testeurs' || current === 'adresses' || current === 'resume'; renderTSel(); }
 function renderStats() {
   const testers = new Set(FB.map(f => f.sid)).size;
   const c = { 'a-trier': 0, retenu: 0, ecarte: 0, 'a-revoir': 0 };
@@ -366,6 +394,7 @@ function renderCards() {
       <span class="num" style="background:${col}${col === '#3d449b' ? ';color:#ffffff' : ''}">${num}</span><span></span>
       <span class="counts">${p.t ? `<span class="chip tri" title="${p.t} à trier">${p.t}</span>` : ''}${p.r ? `<span class="chip ret" title="${p.r} retenu(s)">${p.r}</span>` : ''}</span></button>`;
   };
+  html += `<button type="button" class="item" data-id="resume" aria-current="${current === 'resume'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg></span><span></span><span class="counts"></span></button>`;
   html += `<button type="button" class="item" data-id="testeurs" aria-current="${current === 'testeurs'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.5-3.6 2.9-5.6 6-5.6s5.5 2 6 5.6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.6.1 4.6 1.9 5.2 5.2"/></svg></span><span></span><span class="counts"><span class="chip">${Object.keys(REGS).length}</span></span></button>`;
   { const nAdr = Object.values(REGS).filter(r => r.termine && r.adr1).length;
     html += `<button type="button" class="item${nAdr ? '' : ' vide'}" data-id="adresses" aria-current="${current === 'adresses'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 10l9-6 9 6v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span><span></span><span class="counts">${nAdr ? `<span class="chip ret" title="${nAdr} adresse(s)">${nAdr}</span>` : ''}</span></button>`; }
@@ -378,7 +407,7 @@ function renderCards() {
   $('cards').innerHTML = html;
   // textes posés en textContent (noms des cartes et des sections)
   const items = $('cards').querySelectorAll('.item'), groups = $('cards').querySelectorAll('.group');
-  items.forEach(b => { b.children[1].textContent = b.dataset.id === 'testeurs' ? 'Testeurs inscrits' : b.dataset.id === 'adresses' ? 'Adresses à envoyer' : b.dataset.id === 'general' ? 'Remarques générales' : REG[b.dataset.id].name; });
+  items.forEach(b => { b.children[1].textContent = b.dataset.id === 'resume' ? 'Résumé des retours' : b.dataset.id === 'testeurs' ? 'Testeurs inscrits' : b.dataset.id === 'adresses' ? 'Adresses à envoyer' : b.dataset.id === 'general' ? 'Remarques générales' : REG[b.dataset.id].name; });
   let gi = 0, lastG = null;
   CARDS.forEach(id => { const g = REG[id].section || ''; if (g !== lastG) { groups[gi++].textContent = g.replace(/^AIC · /, ''); lastG = g; } });
 }
@@ -448,10 +477,93 @@ function renderAdresses() {
     $('csvInfo').textContent = `${fin.length} adresse${fin.length > 1 ? 's' : ''} exportée${fin.length > 1 ? 's' : ''}.`;
   };
 }
+// Vue d'ensemble pour trier en priorité : volume de retours par fiche, repère automatique (mots-clés), et tous les textes, dépliables fiche par fiche.
+function renderResume() {
+  const box = $('list');
+  $('title').textContent = 'Résumé des retours';
+  if (!FB.length) {
+    box.innerHTML = '';
+    const p = document.createElement('p'); p.className = 'none';
+    p.textContent = !loaded ? (loadFailed ? 'Les retours n\u2019ont pas pu \u00eatre lus : voir le message en haut de la page.' : 'Lecture des retours de la b\u00eata\u2026') : 'Aucun retour pour le moment.';
+    box.appendChild(p);
+    return;
+  }
+  const groupes = {};
+  FB.forEach(f => {
+    const k = f.card || 'general';
+    if (!groupes[k]) groupes[k] = { items: [], retenu: 0, ecarte: 0, aTrier: 0, neg: 0, pos: 0 };
+    const g = groupes[k];
+    g.items.push(f);
+    const st = statutOf(f);
+    if (st === 'retenu') g.retenu++; else if (st === 'ecarte') g.ecarte++; else g.aTrier++;
+    const ton = tonDe(f.text);
+    if (ton === 'neg') g.neg++; else if (ton === 'pos') g.pos++;
+  });
+  const total = FB.length, maxVol = Math.max(1, ...Object.values(groupes).map(g => g.items.length));
+  const totalNeg = Object.values(groupes).reduce((s, g) => s + g.neg, 0), totalPos = Object.values(groupes).reduce((s, g) => s + g.pos, 0);
+  const nomDe = k => k === 'general' ? 'Remarques générales' : `N°${REG[k].num} · ${REG[k].name}`;
+  const ordre = Object.keys(groupes).sort((a, b) => groupes[b].items.length - groupes[a].items.length);
+  const stLabel = { retenu: 'Retenu', ecarte: 'Écarté', 'a-revoir': 'À revoir', 'a-trier': 'À trier' };
+
+  box.innerHTML = `<div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px">
+      <span class="chip">${total} retour${total > 1 ? 's' : ''} au total</span>
+      <span class="chip neg">~${totalNeg} avec un mot-clé d'alerte</span>
+      <span class="chip ret">~${totalPos} plutôt positifs</span>
+      <button type="button" class="btn" id="resumeDeplier">Tout déplier</button>
+      <button type="button" class="btn" id="resumeReplier">Tout replier</button>
+    </div>
+    <p class="none" style="margin:0 0 12px">⚠ et 👍 sont un repère automatique et approximatif, basé sur des mots-clés français courants, pas une vérité : lisez toujours le texte avant de trier. Cliquez sur une ligne du tableau pour ouvrir la fiche correspondante.</p>
+    <div class="tablewrap"><table class="testeurs"><thead><tr><th>Fiche</th><th>Retours</th><th>Volume</th><th>⚠</th><th>👍</th><th>À trier</th><th>Retenus</th><th>Écartés</th></tr></thead><tbody id="resumeTbody"></tbody></table></div>
+    <h3 style="margin:20px 0 8px;font-size:14px">Tous les textes, fiche par fiche</h3>
+    <div id="resumeDigest"></div>`;
+
+  const tbody = box.querySelector('#resumeTbody');
+  ordre.forEach(k => {
+    const g = groupes[k], pct = Math.round((g.items.length / maxVol) * 100);
+    const tr = document.createElement('tr'); tr.className = 'rrow'; tr.style.cursor = 'pointer';
+    tr.innerHTML = `<td></td><td class="n">${g.items.length}</td><td><div style="background:var(--bg);border-radius:99px;height:8px;overflow:hidden;min-width:70px"><div style="width:${pct}%;height:100%;background:var(--accent);border-radius:99px"></div></div></td><td class="n">${g.neg ? `<span style="color:var(--ko);font-weight:700">${g.neg}</span>` : '—'}</td><td class="n">${g.pos ? `<span style="color:var(--ok);font-weight:700">${g.pos}</span>` : '—'}</td><td class="n">${g.aTrier || '—'}</td><td class="n">${g.retenu || '—'}</td><td class="n">${g.ecarte || '—'}</td>`;
+    tr.children[0].textContent = nomDe(k);
+    tr.addEventListener('click', () => { current = k; selected = null; stay.clear(); filter = 'tout'; $('filter').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'tout'))); render(); });
+    tbody.appendChild(tr);
+  });
+
+  const digestBox = box.querySelector('#resumeDigest');
+  ordre.forEach(k => {
+    const g = groupes[k];
+    const det = document.createElement('details'); det.className = 'resume-card';
+    const sum = document.createElement('summary');
+    const nomSpan = document.createElement('span'); nomSpan.style.flex = '1'; nomSpan.textContent = nomDe(k);
+    sum.appendChild(nomSpan);
+    const chipN = document.createElement('span'); chipN.className = 'chip'; chipN.textContent = String(g.items.length); sum.appendChild(chipN);
+    if (g.neg) { const c = document.createElement('span'); c.className = 'chip neg'; c.textContent = g.neg + ' \u26a0'; sum.appendChild(c); }
+    if (g.pos) { const c = document.createElement('span'); c.className = 'chip ret'; c.textContent = g.pos + ' \ud83d\udc4d'; sum.appendChild(c); }
+    det.appendChild(sum);
+    const itemsBox = document.createElement('div'); itemsBox.className = 'items';
+    g.items.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(f => {
+      const ton = tonDe(f.text), st = statutOf(f), W = who(f);
+      const it = document.createElement('div'); it.className = 'ritem';
+      const dot = document.createElement('span'); dot.className = 'dot' + (ton !== 'neutre' ? ' ' + ton : ''); it.appendChild(dot);
+      const right = document.createElement('div');
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const nom = document.createElement('b'); nom.textContent = W.name; if (!W.known) nom.classList.add('inconnu'); meta.appendChild(nom);
+      const when = document.createElement('span'); when.textContent = f.date ? new Date(f.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''; meta.appendChild(when);
+      const what = document.createElement('span'); what.textContent = f.card ? `${f.pageNo === 1 ? 'recto' : f.pageNo === 2 ? 'verso' : 'page ' + f.pageNo} · ${TLABEL[f.type]}` : TLABEL.general; meta.appendChild(what);
+      const stSpan = document.createElement('span'); stSpan.className = 'st ' + st; stSpan.textContent = stLabel[st]; meta.appendChild(stSpan);
+      right.appendChild(meta);
+      const p = document.createElement('p'); p.style.margin = '0'; p.style.whiteSpace = 'pre-wrap'; p.style.overflowWrap = 'anywhere'; p.textContent = f.text; right.appendChild(p);
+      it.appendChild(right);
+      itemsBox.appendChild(it);
+    });
+    det.appendChild(itemsBox);
+    digestBox.appendChild(det);
+  });
+  box.querySelector('#resumeDeplier').addEventListener('click', () => digestBox.querySelectorAll('details').forEach(d => { d.open = true; }));
+  box.querySelector('#resumeReplier').addEventListener('click', () => digestBox.querySelectorAll('details').forEach(d => { d.open = false; }));
+}
 function renderThumbs() {
   const box = $('thumbs');
-  $('work').classList.toggle('wide', current === 'testeurs' || current === 'adresses');
-  if (current === 'testeurs' || current === 'adresses') { box.innerHTML = ''; return; }
+  $('work').classList.toggle('wide', current === 'testeurs' || current === 'adresses' || current === 'resume');
+  if (current === 'testeurs' || current === 'adresses' || current === 'resume') { box.innerHTML = ''; return; }
   if (current === 'general') { box.innerHTML = '<p class="none">Remarques générales : le « dernier mot » de chaque testeur sur le mini-deck.</p>'; return; }
   const r = REG[current], nums = numbers(), mine = FB.filter(f => f.card === current && visible(f));
   const nPages = r.kind === 'outil' || (r.pages || []).length >= 2 ? 2 : 1;
@@ -465,9 +577,10 @@ $('list').addEventListener('pointerdown', () => { listBusy = true; });
 document.addEventListener('pointerup', () => { if (!listBusy) return; setTimeout(() => { listBusy = false; if (listWanted) { listWanted = false; renderList(); } }, 0); });
 document.addEventListener('pointercancel', () => { listBusy = false; });
 function renderList() {
-  if (listBusy && current !== 'testeurs' && current !== 'adresses') { listWanted = true; return; }
+  if (listBusy && current !== 'testeurs' && current !== 'adresses' && current !== 'resume') { listWanted = true; return; }
   if (current === 'testeurs') return renderTesters();
   if (current === 'adresses') return renderAdresses();
+  if (current === 'resume') return renderResume();
   const box = $('list'), nums = numbers();
   const act = document.activeElement, typing = act && act.tagName === 'TEXTAREA' && act.closest('.fb') ? { key: act.closest('.fb').dataset.key, value: act.value, a: act.selectionStart, b: act.selectionEnd } : null;
   const mine = FB.filter(f => montre(f) && (current === 'general' ? f.card === null : f.card === current));
@@ -527,7 +640,7 @@ $('cards').addEventListener('click', e => { const b = e.target.closest('.item');
 $('filter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; stay.clear(); $('filter').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); render(); });
 
 document.addEventListener('keydown', e => {
-  if (e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || current === 'testeurs' || current === 'adresses') return;
+  if (e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || current === 'testeurs' || current === 'adresses' || current === 'resume') return;
   const els = [...document.querySelectorAll('#list .fb')]; if (!els.length) return;
   let i = els.findIndex(x => x.dataset.key === selected);
   const k = e.key.toLowerCase();
