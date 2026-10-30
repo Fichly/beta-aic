@@ -27,6 +27,13 @@ body.row .sheet{margin:0;box-shadow:0 1px 2px rgba(7,18,70,.08),0 8px 24px rgba(
 <script src="assets/persos/banque.js?rev=615c314c"></script>
 <script src="kit/kit.js?rev=473bcc7b"></script>
 <script src="cards/registry.js?rev=fac27115"></script>
+<style>
+/* cadrage comme les vignettes de la fiche commentée : pages seules, collées en haut à gauche, sans fond ni barre de défilement
+   (la taille renvoyée ne dépend plus de la largeur de l'iframe, qui change ensuite) */
+html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important;min-height:0!important}
+main#deck{display:flex!important;flex-direction:column;align-items:flex-start;gap:6mm;margin:0!important;padding:0!important}
+main#deck .sheet{margin:0!important}
+</style>
 </head>
 <body>
 <main id="deck"></main>
@@ -49,7 +56,10 @@ body.row .sheet{margin:0;box-shadow:0 1px 2px rgba(7,18,70,.08),0 8px 24px rgba(
     } catch (e) { return echec('JS : ' + e.message); }
     const t0 = Date.now();
     (function attendre() {
-      if (window.__ready) { const d = document.documentElement; dire({ type: 'rendu', ok: true, w: d.scrollWidth, h: d.scrollHeight, report: window.__report || [], errors: window.__errors || [] }); return; }
+      if (window.__ready) {
+        const r = [...document.querySelectorAll('.sheet')].map(s => s.getBoundingClientRect());
+        if (!r.length) return dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat(['aucune page rendue']) });
+        dire({ type: 'rendu', ok: true, w: Math.ceil(Math.max(...r.map(x => x.right))), h: Math.ceil(Math.max(...r.map(x => x.bottom))), report: window.__report || [], errors: window.__errors || [] }); return; }
       if (Date.now() - t0 > 30000) { dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat(['rendu trop long']) }); return; }
       setTimeout(attendre, 150);
     })();
