@@ -667,7 +667,7 @@ function renderThumbs() {
   const pages = [];
   for (let k = 1; k <= nPages; k++) pages.push(k);
   if (thCard !== current) {
-    box.innerHTML = `<div class="am-bar" id="amBar"${AMELIO_OK ? '' : ' hidden'}><button type="button" class="btn primary" id="amGo"></button><input type="text" id="amConsigne" maxlength="500" placeholder="Consigne en plus pour Claude (facultatif)" aria-label="Consigne en plus pour Claude"><select id="amVer" aria-label="Proposition affichée"></select><div class="am-vue" id="amVue" role="group" aria-label="Affichage"><button type="button" class="btn" data-v="cote">Côte à côte</button><button type="button" class="btn" data-v="commentee">Commentée</button><button type="button" class="btn" data-v="amelioree">Améliorée</button></div><span class="am-etat" id="amEtat" role="status"></span></div>`
+    box.innerHTML = `<div class="am-bar" id="amBar"${AMELIO_OK ? '' : ' hidden'}><button type="button" class="btn primary" id="amGo"></button><button type="button" class="btn" id="amMd" title="Retours retenus de cette fiche, au format Markdown, à donner à Claude dans une session">Retours retenus (.md)</button><input type="text" id="amConsigne" maxlength="500" placeholder="Consigne en plus pour Claude (facultatif)" aria-label="Consigne en plus pour Claude"><select id="amVer" aria-label="Proposition affichée"></select><div class="am-vue" id="amVue" role="group" aria-label="Affichage"><button type="button" class="btn" data-v="cote">Côte à côte</button><button type="button" class="btn" data-v="commentee">Commentée</button><button type="button" class="btn" data-v="amelioree">Améliorée</button></div><span class="am-etat" id="amEtat" role="status"></span></div>`
       + `<div class="am-cols" id="amCols"><div class="am-col" id="colA"></div><div class="am-col" id="colB" hidden></div></div>`;
     thCard = current; amFrameKey = '';
   }
@@ -704,6 +704,7 @@ function amMaj() {
   let ecart = 0;
   if (v) { const avant = new Set((v.retours || []).map(r => r.cle)), now = new Set(ret.map(x => x.f.key)); now.forEach(k => { if (!avant.has(k)) ecart++; }); avant.forEach(k => { if (!now.has(k)) ecart++; }); }
   go.disabled = !ret.length || !!amEnCours;
+  $('amMd').hidden = !ret.length;
   go.textContent = !ret.length ? 'Retenez des retours pour améliorer la fiche' : enCours ? 'Réécriture en cours…'
     : `${v ? 'Régénérer' : 'Améliorer la fiche'} avec ${ret.length} retour${s} retenu${s}${v && ecart ? ` (${ecart} changement${ecart > 1 ? 's' : ''} depuis)` : ''}`;
   const et = $('amEtat');
@@ -940,6 +941,7 @@ $('thumbs').addEventListener('click', e => {
   if (e.target.closest('#amCorr')) { e.target.closest('#amCorr').remove(); return amCorriger(); }
   const gd = e.target.closest('.am-garder');
   if (gd) { saveDecision(gd.dataset.cle, { statut: 'retenu', formulation: gd.dataset.consigne }); gd.textContent = 'Formulation enregistrée'; gd.disabled = true; return; }
+  if (e.target.closest('#amMd')) { const P = buildPrompt(current); if (P) { telechargerMd(P.text, current); const et = $('amEtat'); if (et && !amEnCours) et.textContent = `Fichier .md téléchargé (${P.points} point${P.points > 1 ? 's' : ''})`; } return; }
   const b = e.target.closest('#amVue [data-v]'); if (b) { amVue = b.dataset.v; amMaj(); amEchelle(); }
 });
 $('thumbs').addEventListener('change', e => { if (e.target.id === 'amVer') { amChoix[current] = e.target.value; amMaj(); } });
@@ -1041,18 +1043,18 @@ function where(f) {
 }
 let PSEUDO = {};   // dans le prompt, les testeurs sont désignés par un numéro (pas de nom ni d'e-mail)
 const quote = f => { const W = who(f), r = f.code ? regOf(f) : null; return `« ${f.text.replace(/\s+/g, ' ').trim()} » (testeur ${PSEUDO[f.code || f.sid] || '?'}${r && r.fonction ? ', ' + r.fonction : W.role ? ', ' + W.role : ''})`; };
-function buildPrompt() {
-  const kept = FB.filter(f => statutOf(f) === 'retenu');
+function buildPrompt(seule) {   // seule : id d'une fiche (fichier .md de cette fiche) ; sinon tout le deck
+  const kept = FB.filter(f => statutOf(f) === 'retenu' && (!seule || f.card === seule));
   if (!kept.length) return null;
   const testers = new Set(FB.map(f => f.sid)).size, keptTesters = new Set(kept.map(f => f.sid)).size;
   PSEUDO = {}; [...new Set(FB.map(f => f.code || f.sid))].forEach((c, i) => { PSEUDO[c] = i + 1; });
   const sansForm = kept.filter(f => !formOf(f)).length;
   const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   const L = [];
-  L.push('# Retours retenus · bêta du mini-deck AIC et Obeya', '');
-  L.push('Applique les retours validés de la bêta du mini-deck AIC et Obeya.', '');
+  L.push(seule ? `# Retours retenus · N°${REG[seule].num} · ${REG[seule].name} (bêta du mini-deck AIC et Obeya)` : '# Retours retenus · bêta du mini-deck AIC et Obeya', '');
+  L.push(seule ? `Applique les retours validés de la bêta sur la fiche N°${REG[seule].num} uniquement (cards/aic/${seule}.js).` : 'Applique les retours validés de la bêta du mini-deck AIC et Obeya.', '');
   L.push('## Contexte', '');
-  L.push(`- ${FB.length} retours de ${testers} testeur${testers > 1 ? 's' : ''} de la bêta en ligne (base Supabase « fichly-beta-aic »), triés par Hugo le ${date} : ${kept.length} retenu${kept.length > 1 ? 's' : ''}, venant de ${keptTesters} testeur${keptTesters > 1 ? 's' : ''}.`);
+  L.push(`- ${FB.length} retours de ${testers} testeur${testers > 1 ? 's' : ''} de la bêta en ligne (base Supabase « fichly-beta-aic »), triés par Hugo le ${date} : ${kept.length} retenu${kept.length > 1 ? 's' : ''}${seule ? ' sur cette fiche' : ''}, venant de ${keptTesters} testeur${keptTesters > 1 ? 's' : ''}.`);
   L.push('- Chaque point se corrige dans le fichier de la carte indiqué (dossier fiches-lean), en respectant kit/GUIDE.md : direction artistique, fidélité à la source (sources/aic/), règles des personnages. Ne change rien d’autre sur la carte.');
   L.push('- Les positions sont en pourcentage de la page : x de gauche (0 %) à droite (100 %), y de haut (0 %) en bas (100 %). Les aperçus sont dans apercus/aic/.');
   L.push('- « Demande validée » : formulation écrite par Hugo, à appliquer. « À interpréter » : texte brut d’un testeur, retenu sans reformulation ; applique-le seulement si l’action est évidente, sinon ne change rien et explique pourquoi dans ta réponse.');
@@ -1077,7 +1079,7 @@ function buildPrompt() {
       L.push('');
     });
   });
-  const gen = kept.filter(f => f.card === null);
+  const gen = seule ? [] : kept.filter(f => f.card === null);
   if (gen.length) {
     L.push('## Remarques générales sur le mini-deck', '');
     L.push('Elles concernent tout le deck : avant de modifier, liste les cartes concernées et ce que tu changes, et demande confirmation si plus de 3 cartes sont touchées.', '');
@@ -1116,13 +1118,16 @@ $('copy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(ta.value); $('copyInfo').textContent = 'Prompt copié : collez-le dans la conversation avec Claude.'; }
   catch (e) { ta.focus(); ta.select(); $('copyInfo').textContent = 'Sélectionné : copiez avec Cmd + C (ou Ctrl + C).'; }
 });
-// Fichier Markdown des retours retenus, à donner à Claude dans une session (avec le dossier fiches-lean)
-$('dlMd').addEventListener('click', () => {
-  const txt = $('promptText').value; if (!txt) return;
-  const d = new Date(), nom = `retours-retenus-aic-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.md`;
+// Fichier Markdown des retours retenus (tout le deck ou une fiche), à donner à Claude dans une session (avec le dossier fiches-lean)
+function telechargerMd(txt, carte) {
+  const d = new Date(), nom = `retours-retenus-${carte || 'aic'}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.md`;
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([txt + '\n'], { type: 'text/markdown;charset=utf-8' })), download: nom });
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  $('copyInfo').textContent = `Téléchargé : ${nom}`;
+  return nom;
+}
+$('dlMd').addEventListener('click', () => {
+  const txt = $('promptText').value; if (!txt) return;
+  $('copyInfo').textContent = `Téléchargé : ${telechargerMd(txt)}`;
 });
 $('closePrompt').addEventListener('click', () => { $('prompt').hidden = true; });
 $('promptGoTriage').addEventListener('click', () => {   // vers le premier retour à trier
