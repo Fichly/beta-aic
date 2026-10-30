@@ -165,6 +165,8 @@ table.testeurs td.n{font-variant-numeric:tabular-nums;text-align:right}
 .am-resume{font-size:13px;margin:8px 0;padding:10px 12px;border-left:3px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0}
 .am-col details{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
 .am-col summary{cursor:pointer;font:700 13px var(--sans)}
+.am-col details.na{border-color:var(--wait);background:var(--waitbg);color:var(--wait)}
+.am-col details.na li{color:var(--ink)}
 .am-modifs{margin:8px 0 0;padding-left:18px;display:grid;gap:10px;font-size:12.5px}
 .am-av{background:var(--kobg);color:var(--ko);text-decoration:line-through;border-radius:4px;padding:0 3px;white-space:pre-wrap;overflow-wrap:anywhere}
 .am-ap{background:var(--okbg);color:var(--ok);border-radius:4px;padding:0 3px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -722,7 +724,7 @@ function amColB(v) {
   const ret = (v.retours || []).length;
   col.innerHTML = `<div class="am-head"><span class="am-h">Fiche améliorée par Claude</span><span class="am-meta"></span><button type="button" class="btn" id="amAdopt"></button></div>`
     + `<div class="am-frame" id="amFrameBox"><p class="none">Rendu de la fiche proposée…</p></div><div class="am-alertes" id="amAlertes"></div>`
-    + `<div class="am-resume" id="amResume"></div><details open><summary></summary><ol class="am-modifs" id="amModifs"></ol></details><details id="amNA"><summary></summary><ul class="am-modifs" id="amNAl"></ul></details>`;
+    + `<div class="am-resume" id="amResume"></div><details open><summary></summary><ol class="am-modifs" id="amModifs"></ol></details><details id="amNA" class="na" open><summary></summary><ul class="am-modifs" id="amNAl"></ul></details>`;
   col.querySelector('.am-meta').textContent = `${amDate(v.created_at)} · ${ret} retour${ret > 1 ? 's' : ''} retenu${ret > 1 ? 's' : ''}${v.consigne ? ' · consigne : ' + v.consigne : ''}`;
   const b = col.querySelector('#amAdopt'); b.textContent = v.adoptee ? 'Version adoptée' : 'Adopter cette version'; b.classList.toggle('on', !!v.adoptee);
   $('amResume').textContent = v.resume || '';
@@ -735,7 +737,7 @@ function amColB(v) {
     $('amModifs').appendChild(li);
   });
   $('amNA').hidden = !na.length;
-  $('amNA').querySelector('summary').textContent = `Retours non appliqués (${na.length})`;
+  $('amNA').querySelector('summary').textContent = `${na.length} retour${na.length > 1 ? 's' : ''} retenu${na.length > 1 ? 's' : ''} non appliqué${na.length > 1 ? 's' : ''} : à trancher (ajoutez une formulation pour l’imposer)`;
   na.forEach(x => $('amNAl').appendChild(Object.assign(document.createElement('li'), { textContent: `Retour n°${x.retour} : ${x.raison}` })));
   // aperçu isolé : le code proposé s'exécute dans une iframe sans accès à cette page
   const fr = document.createElement('iframe');
