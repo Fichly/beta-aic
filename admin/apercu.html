@@ -40,6 +40,23 @@ main#deck .sheet{margin:0!important}
 <script>
 (function () {
   let recu = false;
+  // Règle Fichly : 8 pt minimum pour tout texte de la carte (taille rendue, dessins mis à l'échelle compris),
+  // hors bandeau, pied de page et bloc QR du kit
+  function petits() {
+    const vus = new Map();
+    document.querySelectorAll('.sheet').forEach((sh, i) => {
+      const w = document.createTreeWalker(sh, NodeFilter.SHOW_TEXT);
+      for (let n; (n = w.nextNode());) {
+        const t = n.textContent.replace(/\s+/g, ' ').trim(), el = n.parentElement;
+        if (!t || !el || !el.getClientRects().length || el.closest('header.band, footer.foot, .copy, .qr, .qrl')) continue;
+        let px = parseFloat(getComputedStyle(el).fontSize);
+        if (el.closest('svg')) { const m = el.getScreenCTM && el.getScreenCTM(); if (m) px *= Math.hypot(m.a, m.b); }
+        const pt = Math.round(px * 0.75 * 10) / 10, k = (i + 1) + '|' + t.slice(0, 60);
+        if (pt < 7.95 && (!vus.has(k) || vus.get(k).pt > pt)) vus.set(k, { page: i + 1, texte: t.slice(0, 60), pt });
+      }
+    });
+    return [...vus.values()].sort((a, b) => a.pt - b.pt).slice(0, 40);
+  }
   const dire = m => parent.postMessage(m, '*');
   window.addEventListener('message', ev => {
     if (ev.source !== window.parent || recu) return;
@@ -59,7 +76,7 @@ main#deck .sheet{margin:0!important}
       if (window.__ready) {
         const r = [...document.querySelectorAll('.sheet')].map(s => s.getBoundingClientRect());
         if (!r.length) return dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat(['aucune page rendue']) });
-        dire({ type: 'rendu', ok: true, w: Math.ceil(Math.max(...r.map(x => x.right))), h: Math.ceil(Math.max(...r.map(x => x.bottom))), report: window.__report || [], errors: window.__errors || [] }); return; }
+        dire({ type: 'rendu', ok: true, w: Math.ceil(Math.max(...r.map(x => x.right))), h: Math.ceil(Math.max(...r.map(x => x.bottom))), report: window.__report || [], errors: window.__errors || [], petits: petits() }); return; }
       if (Date.now() - t0 > 30000) { dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat(['rendu trop long']) }); return; }
       setTimeout(attendre, 150);
     })();
