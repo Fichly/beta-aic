@@ -1202,7 +1202,7 @@ function pageLibre(F, P, k, total) {
 }
 function cardPages(F) {
   if (F.kind === 'libre') return F.pages.map((P, k) => ({ html: pageLibre(F, P, k, F.pages.length), css: P.css || '' }));
-  return [{ html: recto3(F) }, { html: verso(F) }];
+  return [{ html: recto3(F), css: F.css || '' }, { html: verso(F) }];   // css : règles propres à la fiche, préfixées .sheet[data-card="id"]
 }
 // Le titre se réduit s'il est trop large (jusqu'à 18 pt), sinon erreur : raccourcir ou fournir titleV
 function fitTitles() {
