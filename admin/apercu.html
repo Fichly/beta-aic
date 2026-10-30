@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aperçu de fiche améliorée</title>
+<meta name="robots" content="noindex,nofollow">
+<script>try { history.replaceState(null, "", "about:srcdoc#deck=aic"); } catch (e) {}   // format du mini-deck AIC, lu par le kit dans l'adresse</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&display=block" rel="stylesheet">
+<script>
+// relevé des alertes pour l'interface de rendu (viewer.html)
+window.__errors = [];
+(function () { const e = console.error.bind(console); console.error = (...a) => { window.__errors.push(a.join(' ')); e(...a); };
+  window.addEventListener('error', ev => window.__errors.push('JS : ' + ev.message)); })();
+</script>
+<style>
+body.row{background:transparent;padding:6mm 0}
+body.row main{display:flex;flex-wrap:wrap;gap:6mm;justify-content:center;align-items:flex-start}
+body.row .sheet{margin:0;box-shadow:0 1px 2px rgba(7,18,70,.08),0 8px 24px rgba(7,18,70,.10)}
+</style>
+<link rel="stylesheet" href="assets/masks.css?rev=0f02ad84">
+<link rel="stylesheet" href="kit/kit.css?rev=be4ec4b3">
+<script src="lib/rough.js?rev=73fdce3a"></script>
+<script src="lib/qrcode.min.js?rev=c90587a7"></script>
+<script src="assets/persos/banque.js?rev=615c314c"></script>
+<script src="kit/kit.js?rev=bb126550"></script>
+<script src="cards/registry.js?rev=fac27115"></script>
+</head>
+<body>
+<main id="deck"></main>
+<script>
+(function () {
+  let recu = false;
+  const dire = m => parent.postMessage(m, '*');
+  window.addEventListener('message', ev => {
+    if (ev.source !== window.parent || recu) return;
+    const m = ev.data || {};
+    if (m.type !== 'carte' || typeof m.code !== 'string' || !/^aic-\d\d[a-z]?$/.test(m.id || '')) return;
+    recu = true;
+    const echec = t => dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat([t]) });
+    try {
+      if (typeof addCard !== 'function' || typeof renderDeck !== 'function') return echec('le moteur de mise en page ne s’est pas chargé');
+      const s = document.createElement('script'); s.textContent = m.code; document.body.appendChild(s);
+      const F = CARDS.find(c => c.id === m.id);
+      if (!F) return echec('fiche absente du code proposé');
+      renderDeck([F]);
+    } catch (e) { return echec('JS : ' + e.message); }
+    const t0 = Date.now();
+    (function attendre() {
+      if (window.__ready) { const d = document.documentElement; dire({ type: 'rendu', ok: true, w: d.scrollWidth, h: d.scrollHeight, report: window.__report || [], errors: window.__errors || [] }); return; }
+      if (Date.now() - t0 > 30000) { dire({ type: 'rendu', ok: false, errors: (window.__errors || []).concat(['rendu trop long']) }); return; }
+      setTimeout(attendre, 150);
+    })();
+  });
+  dire({ type: 'pret' });
+})();
+</script>
+</body>
+</html>
