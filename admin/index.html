@@ -344,7 +344,7 @@ const AMELIO_OK = typeof rpc === 'function';
 const AM_DEMANDES = {};
 function amDemande(card) { if (!(card in AM_DEMANDES)) { try { AM_DEMANDES[card] = localStorage.getItem('amDemande:' + card) || ''; } catch (e) { AM_DEMANDES[card] = ''; } } return AM_DEMANDES[card]; }
 function amDemandeMemo(card, txt) { AM_DEMANDES[card] = txt; try { if (txt.trim()) localStorage.setItem('amDemande:' + card, txt); else localStorage.removeItem('amDemande:' + card); } catch (e) {} }
-let AMELIO = {}, amVue = 'cote', thCard = null, amEnCours = null, amFrame = null, amFrameV = null, amFrameKey = '', amRendu = null;
+let AMELIO = {}, amVue = 'cote', thCard = null, amRuns = {}, amFrame = null, amFrameV = null, amFrameKey = '', amRendu = null;
 const amChoix = {}, amErreur = {};
 let amDernier = null, amAttente = null;   // dernier rendu reçu de l'aperçu ; vérification qui l'attend
 
@@ -487,7 +487,7 @@ function renderCards() {
     const p = per[id] || { t: 0, r: 0 };
     return `<button type="button" class="item${(p.t + p.r) ? '' : ' vide'}" data-id="${id}" aria-current="${id === current}">
       <span class="num" style="background:${col}${col === '#3d449b' ? ';color:#ffffff' : ''}">${num}</span><span></span>
-      <span class="counts">${p.t ? `<span class="chip tri" title="${p.t} à trier">${p.t}</span>` : ''}${p.r ? `<span class="chip ret" title="${p.r} retenu(s)">${p.r}</span>` : ''}${(AMELIO[id] || []).length ? `<span class="chip amel" title="${AMELIO[id].length} proposition(s) améliorée(s)">✎ ${AMELIO[id].length}</span>` : ''}</span></button>`;
+      <span class="counts">${p.t ? `<span class="chip tri" title="${p.t} à trier">${p.t}</span>` : ''}${p.r ? `<span class="chip ret" title="${p.r} retenu(s)">${p.r}</span>` : ''}${amRuns[id] ? `<span class="chip amel" title="Génération en cours">…</span>` : ''}${(AMELIO[id] || []).length ? `<span class="chip amel" title="${AMELIO[id].length} proposition(s) améliorée(s)">✎ ${AMELIO[id].length}</span>` : ''}</span></button>`;
   };
   html += `<button type="button" class="item" data-id="resume" aria-current="${current === 'resume'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg></span><span></span><span class="counts"></span></button>`;
   html += `<button type="button" class="item" data-id="testeurs" aria-current="${current === 'testeurs'}"><span class="num" style="background:#3d449b;color:#ffffff"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.5-3.6 2.9-5.6 6-5.6s5.5 2 6 5.6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.6.1 4.6 1.9 5.2 5.2"/></svg></span><span></span><span class="counts"><span class="chip">${Object.keys(REGS).length}</span></span></button>`;
@@ -705,20 +705,20 @@ function amMaj() {
   const v = carte ? amVersion() : null, vue = v ? amVue : 'commentee';
   $('work').classList.toggle('cmp', !!(v && vue === 'cote'));
   if (!carte) return;
-  const ret = amRetenus(), enCours = amEnCours && amEnCours.card === current;
+  const ret = amRetenus(), run = amRuns[current], enCours = !!run;
   // bouton : retours retenus maintenant, et écart avec la proposition affichée
   const go = $('amGo'), s = ret.length > 1 ? 's' : '';
   let ecart = 0;
   if (v) { const avant = new Set((v.retours || []).map(r => r.cle)), now = new Set(ret.map(x => x.f.key)); now.forEach(k => { if (!avant.has(k)) ecart++; }); avant.forEach(k => { if (!now.has(k)) ecart++; }); }
   const dem = amDemande(current).trim();
-  go.disabled = (!ret.length && !dem) || !!amEnCours;
+  go.disabled = (!ret.length && !dem) || enCours;
   $('amMd').hidden = !ret.length;
   const quoi = [ret.length ? `${ret.length} retour${s} retenu${s}` : '', dem ? 'ta demande' : ''].filter(Boolean).join(' + ');
   go.textContent = !quoi ? 'Retenez des retours ou écrivez une demande' : enCours ? 'Réécriture en cours…'
     : `${v ? 'Régénérer' : 'Améliorer la fiche'} avec ${quoi}${v && ecart ? ` (${ecart} changement${ecart > 1 ? 's' : ''} depuis)` : ''}`;
   const et = $('amEtat');
   et.className = 'am-etat' + (enCours ? ' run' : amErreur[current] ? ' ko' : '');
-  et.textContent = enCours ? `${amEnCours.message} ${Math.round((Date.now() - amEnCours.t0) / 1000)} s` : (amErreur[current] || '');
+  et.textContent = enCours ? `${run.lot || ''}${run.message} ${Math.round((Date.now() - run.t0) / 1000)} s` : (amErreur[current] || '');
   // versions et affichage
   const l = AMELIO[current] || [], sel = $('amVer'), sig = l.map(x => x.id + (x.adoptee ? '*' : '')).join(',') + '|' + (v ? v.id : '');
   sel.hidden = !l.length; $('amVue').hidden = !l.length;
@@ -735,7 +735,7 @@ function amMaj() {
 }
 // Colonne « améliorée » : refaite seulement quand la proposition affichée change (l'iframe garde son rendu)
 function amColB(v) {
-  const col = $('colB'), key = current + '|' + v.id + '|' + (v.verifications || []).length;
+  const col = $('colB'), key = current + '|' + v.id + '|' + (v.verifications || []).length + '|' + v.code_js.length;
   const adopt = col.querySelector('#amAdopt');
   if (amFrameKey === key) { if (adopt) { adopt.textContent = v.adoptee ? 'Version adoptée' : 'Adopter cette version'; adopt.classList.toggle('on', !!v.adoptee); } return; }
   amFrameKey = key; amFrameV = v; amRendu = null;
@@ -822,7 +822,7 @@ window.addEventListener('message', e => {
   al.innerHTML = '';
   al.appendChild(document.createTextNode(errs.length ? `Mise en page : ${errs.length} alerte${errs.length > 1 ? 's' : ''} à vérifier` : 'Mise en page : aucune alerte (rien ne déborde, aucun texte sous 8 pt)'));
   if (errs.length) { const ul = document.createElement('ul'); errs.forEach(t => ul.appendChild(Object.assign(document.createElement('li'), { textContent: t }))); al.appendChild(ul); }
-  if ((errs.length || !m.ok) && !amEnCours) al.appendChild(Object.assign(document.createElement('button'), { type: 'button', className: 'btn', id: 'amCorr', textContent: 'Faire corriger la mise en page par Claude' }));
+  if ((errs.length || !m.ok) && !amRuns[amFrameV.card]) al.appendChild(Object.assign(document.createElement('button'), { type: 'button', className: 'btn', id: 'amCorr', textContent: 'Faire corriger la mise en page par Claude' }));
   amDernier = { id: amFrameV.id, ok: !!m.ok, errors: errs, report: (Array.isArray(m.report) ? m.report : []).map(String).slice(0, 10) };
   if (amAttente && amAttente.id === amDernier.id) { const a = amAttente; amAttente = null; a.resolve(amDernier); }
 });
@@ -854,6 +854,7 @@ async function amImages(card, ret) {
   }
   return out;
 }
+const AM_LOT = 5;   // consignes appliquées par appel (limites de la fonction : 32 000 jetons, 400 s)
 // Appel d'une étape de la fonction ameliorer-fiche (flux SSE : états puis résultat)
 async function amAppel(corps) {
   const r = await fetch(SB.url + '/functions/v1/ameliorer-fiche', {
@@ -875,7 +876,7 @@ async function amAppel(corps) {
       const ev = (/^event: (.*)$/m.exec(bloc) || [])[1], data = (/^data: (.*)$/m.exec(bloc) || [])[1];
       if (!ev || !data) continue;
       const d = JSON.parse(data);
-      if (ev === 'etat') { if (amEnCours) amEnCours.message = d.message; amMaj(); }
+      if (ev === 'etat') { if (amRuns[corps.card]) amRuns[corps.card].message = d.message; amMaj(); }
       else if (ev === 'resultat') fin = d;
       else if (ev === 'erreur') throw new Error(d.message);
     }
@@ -886,53 +887,71 @@ async function amAppel(corps) {
 const amRemplacer = row => { const l = AMELIO[row.card] = AMELIO[row.card] || [], i = l.findIndex(x => x.id === row.id); if (i >= 0) l[i] = row; else l.unshift(row); };
 function amAttendreRendu(id, ms = 45000) {
   if (amDernier && amDernier.id === id) return Promise.resolve(amDernier);
-  return new Promise(res => { amAttente = { id, resolve: res }; setTimeout(() => { if (amAttente && amAttente.id === id) { amAttente = null; res(null); } }, ms); });
+  return new Promise(res => { amAttente = { id, resolve: res }; setTimeout(() => { if (amAttente && amAttente.id === id) amAttente = null; res(null); }, ms); });
 }
 // Vérification comme on le ferait à la main : rendre la fiche, lire les alertes du kit, faire corriger, recommencer
 async function amVerifier(card, id, tours) {
   for (let t = 0; t < tours; t++) {
     if (current !== card || !amVersion() || amVersion().id !== id || amVue === 'commentee') return;   // vérifiée sur la fiche affichée
-    amEnCours.message = 'Vérification de la mise en page…'; amMaj();
+    amRuns[card].lot = ''; amRuns[card].message = 'Vérification de la mise en page…'; amMaj();
     const rendu = await amAttendreRendu(id);
     if (!rendu || (rendu.ok && !rendu.errors.length)) return;
     const n = rendu.errors.length || 1;
-    amEnCours.message = `Claude corrige la mise en page (${n} alerte${n > 1 ? 's' : ''})…`; amMaj();
+    amRuns[card].message = `Claude corrige la mise en page (${n} alerte${n > 1 ? 's' : ''})…`; amMaj();
     const row = await amAppel({ card, mode: 'corriger', id, alertes: rendu.errors.length ? rendu.errors : ['La fiche proposée ne s’affiche pas (erreur de rendu).'], rapport: rendu.report });
-    amRemplacer(row); amDernier = null; amMaj();
+    amRemplacer(row); if (current === card) amDernier = null; amMaj();
   }
 }
 async function amGenerer() {
-  if (!AMELIO_OK || amEnCours) return;
+  if (!AMELIO_OK || amRuns[current]) return;
   const card = current, ret = amRetenus(), consigne = $('amConsigne') ? $('amConsigne').value.trim() : '';
   if (!ret.length && !consigne) return;
   for (let i = 0; i < 50 && Object.keys(pending).length; i++) await new Promise(r => setTimeout(r, 200));   // décisions en cours d'enregistrement
-  amEnCours = { card, t0: Date.now(), message: 'Préparation des aperçus annotés…' };
+  const run = amRuns[card] = { card, t0: Date.now(), message: 'Préparation des aperçus annotés…' };   // une génération par fiche, plusieurs fiches en parallèle
   amErreur[card] = '';
   const tick = setInterval(amMaj, 1000);
-  amMaj();
+  renderCards(); amMaj();
   try {
     const images = await amImages(card, ret), retours = ret.map(x => ({ cle: x.f.key, n: x.n }));
-    amEnCours.message = 'Envoi à Claude…'; amMaj();
+    run.message = 'Envoi à Claude…'; amMaj();
     const { plan, strategie } = await amAppel({ card, mode: 'plan', retours, consigne, images });
-    amEnCours.message = `Consignes prêtes pour ${plan.length} retour${plan.length > 1 ? 's' : ''} : application…`; amMaj();
-    const row = await amAppel({ card, mode: 'appliquer', retours, consigne, images, plan, strategie });
-    amRemplacer(row); amChoix[card] = row.id; amDernier = null;
-    if (amVue === 'commentee') amVue = 'cote';
-    renderCards(); amMaj();
+    // Application par lots : un lot trop long est coupé en deux, un lot en échec n'empêche pas les autres
+    const nums = plan.filter(x => x.decision !== 'impossible').map(x => x.n).concat(retours.filter(r => !plan.some(x => x.n === r.n)).map(r => r.n)).sort((a, b) => a - b), lots = [];   // un retour oublié par le plan reste appliqué
+    if (nums[0] === 0) lots.push([nums.shift()]);
+    for (let i = 0; i < nums.length; i += AM_LOT) lots.push(nums.slice(i, i + AM_LOT));
+    if (!lots.length) lots.push([]);
+    let row = null, fait = 0, total = lots.length;
+    const echecs = [];
+    while (lots.length) {
+      const lot = lots.shift();
+      fait++; run.lot = total > 1 ? `Lot ${fait}/${total} : ` : ''; run.message = 'application…'; amMaj();
+      try {
+        row = await amAppel({ card, mode: 'appliquer', retours, consigne, images, plan, strategie, lot, ...(row ? { id: row.id } : {}) });
+        amRemplacer(row); amChoix[card] = row.id;
+        if (current === card) { amDernier = null; if (amVue === 'commentee') amVue = 'cote'; }
+        renderCards(); amMaj();
+      } catch (e) {
+        const msg = (e && e.message) || String(e);
+        if (lot.length > 1 && /trop longue|interrompue/.test(msg)) { const m = Math.ceil(lot.length / 2); lots.unshift(lot.slice(0, m), lot.slice(m)); fait--; total++; continue; }
+        echecs.push({ lot, msg });
+      }
+    }
+    if (!row) throw new Error(echecs.length ? echecs[0].msg : 'aucune proposition');
+    if (echecs.length) amErreur[card] = `Proposition enregistrée, mais retour${echecs.flatMap(x => x.lot).length > 1 ? 's' : ''} n°${echecs.flatMap(x => x.lot).join(', n°')} non appliqué${echecs.flatMap(x => x.lot).length > 1 ? 's' : ''} : ${echecs[0].msg} Régénérez pour les reprendre.`;
     await amVerifier(card, row.id, 2);
   } catch (e) {
     amErreur[card] = 'Échec : ' + ((e && e.message) || e);
   }
-  clearInterval(tick); amEnCours = null;
-  renderCards(); amMaj(); amDernier && amFrameV && amFrameV.id === amDernier.id && amAlerteBouton();
+  clearInterval(tick); delete amRuns[card];
+  renderCards(); amMaj(); current === card && amDernier && amFrameV && amFrameV.id === amDernier.id && amAlerteBouton();
 }
 async function amCorriger() {
-  const v = amVersion(); if (!AMELIO_OK || !v || amEnCours) return;
-  amEnCours = { card: v.card, t0: Date.now(), message: 'Vérification de la mise en page…' };
+  const v = amVersion(); if (!AMELIO_OK || !v || amRuns[v.card]) return;
+  amRuns[v.card] = { card: v.card, t0: Date.now(), message: 'Vérification de la mise en page…' };
   amErreur[v.card] = '';
   const tick = setInterval(amMaj, 1000);
   try { await amVerifier(v.card, v.id, 1); } catch (e) { amErreur[v.card] = 'Échec : ' + ((e && e.message) || e); }
-  clearInterval(tick); amEnCours = null; amMaj();
+  clearInterval(tick); delete amRuns[v.card]; amMaj();
 }
 // Après la fin d'une génération, le bouton de correction réapparaît si des alertes restent
 function amAlerteBouton() {
@@ -953,7 +972,7 @@ $('thumbs').addEventListener('click', e => {
   if (e.target.closest('#amCorr')) { e.target.closest('#amCorr').remove(); return amCorriger(); }
   const gd = e.target.closest('.am-garder');
   if (gd) { saveDecision(gd.dataset.cle, { statut: 'retenu', formulation: gd.dataset.consigne }); gd.textContent = 'Formulation enregistrée'; gd.disabled = true; return; }
-  if (e.target.closest('#amMd')) { const P = buildPrompt(current); if (P) { telechargerMd(P.text, current); const et = $('amEtat'); if (et && !amEnCours) et.textContent = `Fichier .md téléchargé (${P.points} point${P.points > 1 ? 's' : ''})`; } return; }
+  if (e.target.closest('#amMd')) { const P = buildPrompt(current); if (P) { telechargerMd(P.text, current); const et = $('amEtat'); if (et && !amRuns[current]) et.textContent = `Fichier .md téléchargé (${P.points} point${P.points > 1 ? 's' : ''})`; } return; }
   const b = e.target.closest('#amVue [data-v]'); if (b) { amVue = b.dataset.v; amMaj(); amEchelle(); }
 });
 $('thumbs').addEventListener('change', e => { if (e.target.id === 'amVer') { amChoix[current] = e.target.value; amMaj(); } });
